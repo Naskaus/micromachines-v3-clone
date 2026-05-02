@@ -17,15 +17,21 @@ extends RigidBody3D
 @export var respawn_keycode: int = KEY_R  # which key respawns this car
 @export var reverse_keycode: int = KEY_S  # held to reverse out of a stuck spot
 
-# --- Tuning constants (BASELINE V0.2 — slow ramp + steer drag) ---
-const TOP_SPEED := 42.0          # m/s — cruise speed (was 28)
-const ACCEL := 20.0              # m/s² — slow ramp, ~2s from 0 to top (was 50)
+# --- Tuning constants (BASELINE V0.3 — slow ramp + steer drag + better drift) ---
+const TOP_SPEED := 42.0          # m/s — cruise speed
+const ACCEL := 20.0              # m/s² — slow ramp, ~2s from 0 to top
 const TURN_RATE := 3.4           # rad/s — yaw rate at full speed
 const TURN_RATE_LOW_SPEED := 2.0 # rad/s — yaw rate when nearly stopped (less twitchy)
+const TURN_RATE_DRIFT_BONUS := 1.20  # +20% yaw rate when drifting (car pivots more visibly)
 const LATERAL_GRIP := 8.0        # how hard we kill sideways velocity (higher = less slide)
-const DRIFT_GRIP := 3.0          # lateral grip when player is hard-turning (drift)
-const HARD_TURN_SPEED_FACTOR := 0.7  # speed must be >70% top to "drift"
+const DRIFT_GRIP := 1.8          # lateral grip when drifting — lower = longer slide (was 3.0)
+const HARD_TURN_SPEED_FACTOR := 0.55 # speed > 55% top to "drift" — easier to trigger (was 0.7)
 const STEER_TOP_LOSS := 0.15     # at full steer, effective top is reduced by this fraction (15%)
+
+# --- Player catch-up rubber-banding ---
+const PLAYER_RUBBER_MAX := 0.30  # +30% top speed boost when behind leader
+const PLAYER_RUBBER_DEAD_ZONE := 0.02  # no boost within 2% of a lap behind
+const PLAYER_RUBBER_FULL_GAP := 0.5    # 50% lap behind = max boost
 
 # --- Test toggle (T cycles slow/normal/fast, R respawns) ---
 const SPEED_MODES := ["SLOW", "NORMAL", "FAST"]
@@ -40,6 +46,20 @@ var _boost_factor: float = 1.0
 # --- Reverse gear ---
 const REVERSE_TOP_SPEED := -10.0  # m/s — capped slow reverse for unsticking
 const REVERSE_FORCE_FACTOR := 0.7  # multiplier on ACCEL when reversing
+
+# --- Race progress (fed from race_manager for catch-up rubber-banding) ---
+var _progress_gap_to_leader: float = 0.0  # >0 means I'm behind leader; updated each frame
+
+
+func set_race_progress_gap(gap: float) -> void:
+	_progress_gap_to_leader = gap
+
+
+func _catch_up_factor() -> float:
+	if _progress_gap_to_leader <= PLAYER_RUBBER_DEAD_ZONE:
+		return 1.0
+	var t: float = clamp(_progress_gap_to_leader / PLAYER_RUBBER_FULL_GAP, 0.0, 1.0)
+	return 1.0 + t * PLAYER_RUBBER_MAX
 
 var _left_action: String
 var _right_action: String
@@ -116,20 +136,24 @@ func _physics_process(delta: float) -> void:
 		steer_input -= 1.0
 
 	# --- REVERSE / AUTO-ACCEL (mutually exclusive) ---
-	# Effective top is reduced when steering hard — turning naturally bleeds speed.
-	var top: float = _effective_top_speed() * (1.0 - abs(steer_input) * STEER_TOP_LOSS)
+	# Effective top: base × catch-up rubber × (1 - steer_drag)
+	var top: float = _effective_top_speed() * _catch_up_factor() * (1.0 - abs(steer_input) * STEER_TOP_LOSS)
 	var reverse_held: bool = Input.is_key_pressed(reverse_keycode)
 	if reverse_held and fwd_speed > REVERSE_TOP_SPEED:
 		apply_central_force(-fwd * ACCEL * mass * REVERSE_FORCE_FACTOR)
 	elif not reverse_held and fwd_speed < top:
 		apply_central_force(fwd * ACCEL * mass)
 
+	# --- DRIFT detection happens BEFORE the angular_velocity assignment
+	# so we can boost yaw rate while drifting (car visibly pivots more)
 	var speed_ratio: float = clamp(fwd_speed / top, 0.0, 1.0)
+	var is_hard_turning: bool = abs(steer_input) > 0.5 and speed_ratio > HARD_TURN_SPEED_FACTOR
 	var turn_rate: float = lerp(TURN_RATE_LOW_SPEED, TURN_RATE, speed_ratio)
+	if is_hard_turning:
+		turn_rate *= TURN_RATE_DRIFT_BONUS
 	angular_velocity.y = steer_input * turn_rate
 
-	# --- DRIFT / GRIP ---
-	var is_hard_turning: bool = abs(steer_input) > 0.5 and speed_ratio > HARD_TURN_SPEED_FACTOR
+	# --- DRIFT / GRIP --- (is_hard_turning already computed above)
 	var grip: float = DRIFT_GRIP if is_hard_turning else LATERAL_GRIP
 	var lateral_correction: Vector3 = -right * lateral_speed * grip * delta
 	apply_central_impulse(lateral_correction * mass)

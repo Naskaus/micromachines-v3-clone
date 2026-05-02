@@ -201,8 +201,28 @@ func _process(_delta: float) -> void:
 		return
 	_update_leader_and_camera()
 	if _state == State.RACING:
+		_feed_progress_gaps_to_players()
 		_check_eliminations()
 		_update_race_hud()
+
+
+func _feed_progress_gaps_to_players() -> void:
+	# Each player learns how far behind the actual race leader they are (in laps).
+	# This drives the player car's catch-up rubber-banding.
+	var leader: Node = _get_race_leader()
+	if leader == null:
+		return
+	var leader_progress: float = _racer_progress(leader)
+	for p in _players:
+		if not p.has_method("set_race_progress_gap"):
+			continue
+		if _eliminated.has(p) or _racer_data[p].finished:
+			p.set_race_progress_gap(0.0)
+			continue
+		var gap: float = leader_progress - _racer_progress(p)
+		if gap < 0.0:
+			gap = 0.0  # player is leader — no boost needed
+		p.set_race_progress_gap(gap)
 
 
 func _input(event: InputEvent) -> void:

@@ -12,14 +12,15 @@ extends RigidBody3D
 @export var skill: float = 1.0  # 0.5 = sluggish, 1.5 = aggressive (multiplies top speed)
 @export var player_path: NodePath  # set in Main.tscn — used for rubber-banding
 
-# Same physics baseline as player (BASELINE V0.2 — slow ramp + steer drag)
+# Same physics baseline as player (BASELINE V0.3 — slow ramp + steer drag + better drift)
 const TOP_SPEED := 42.0
 const ACCEL := 20.0
 const TURN_RATE := 3.4
 const TURN_RATE_LOW_SPEED := 2.0
+const TURN_RATE_DRIFT_BONUS := 1.20
 const LATERAL_GRIP := 8.0
-const DRIFT_GRIP := 3.0
-const HARD_TURN_SPEED_FACTOR := 0.7
+const DRIFT_GRIP := 1.8
+const HARD_TURN_SPEED_FACTOR := 0.55
 const STEER_TOP_LOSS := 0.15
 
 # Oval (must match Track01.tscn / pool_felt shader / race_manager)
@@ -166,13 +167,15 @@ func _physics_process(delta: float) -> void:
 	if fwd_speed < top:
 		apply_central_force(fwd * ACCEL * mass)
 
-	# 11. Apply angular velocity (yaw rate scales with current speed)
+	# 11. Apply angular velocity (yaw rate scales with current speed; drift boost when hard turning)
 	var speed_ratio: float = clamp(fwd_speed / top, 0.0, 1.0)
+	var is_hard_turning: bool = abs(steer_input) > 0.5 and speed_ratio > HARD_TURN_SPEED_FACTOR
 	var turn_rate: float = lerp(TURN_RATE_LOW_SPEED, TURN_RATE, speed_ratio)
+	if is_hard_turning:
+		turn_rate *= TURN_RATE_DRIFT_BONUS
 	angular_velocity.y = steer_input * turn_rate
 
 	# 12. Drift / lateral grip
-	var is_hard_turning: bool = abs(steer_input) > 0.5 and speed_ratio > HARD_TURN_SPEED_FACTOR
 	var grip: float = DRIFT_GRIP if is_hard_turning else LATERAL_GRIP
 	var lateral_correction: Vector3 = -right * lateral_speed * grip * delta
 	apply_central_impulse(lateral_correction * mass)
