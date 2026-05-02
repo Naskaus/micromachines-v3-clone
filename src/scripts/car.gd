@@ -28,10 +28,10 @@ const DRIFT_GRIP := 1.8          # lateral grip when drifting — lower = longer
 const HARD_TURN_SPEED_FACTOR := 0.55 # speed > 55% top to "drift" — easier to trigger (was 0.7)
 const STEER_TOP_LOSS := 0.15     # at full steer, effective top is reduced by this fraction (15%)
 
-# --- Player catch-up rubber-banding ---
-const PLAYER_RUBBER_MAX := 0.30  # +30% top speed boost when behind leader
+# --- Player catch-up rubber-banding (aggressive — make last-place comeback feel real) ---
+const PLAYER_RUBBER_MAX := 0.60  # +60% top speed boost at max gap (was 0.30)
 const PLAYER_RUBBER_DEAD_ZONE := 0.02  # no boost within 2% of a lap behind
-const PLAYER_RUBBER_FULL_GAP := 0.5    # 50% lap behind = max boost
+const PLAYER_RUBBER_FULL_GAP := 0.25   # 25% lap behind = max boost (was 50%)
 
 # --- Test toggle (T cycles slow/normal/fast, R respawns) ---
 const SPEED_MODES := ["SLOW", "NORMAL", "FAST"]
