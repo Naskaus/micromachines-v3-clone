@@ -15,6 +15,7 @@ extends RigidBody3D
 @export var spawn_yaw_deg: float = -90.0  # rotation around Y at spawn
 @export var car_color: Color = Color(0.9, 0.2, 0.2, 1.0)  # body color (overrides Mat_red)
 @export var respawn_keycode: int = KEY_R  # which key respawns this car
+@export var reverse_keycode: int = KEY_S  # held to reverse out of a stuck spot
 
 # --- Tuning constants (BASELINE V0.1) ---
 const TOP_SPEED := 28.0          # m/s — cruise speed
@@ -34,6 +35,10 @@ var _current_top_speed := TOP_SPEED
 # --- Boost (set by boost pads) ---
 var _boost_until: float = 0.0
 var _boost_factor: float = 1.0
+
+# --- Reverse gear ---
+const REVERSE_TOP_SPEED := -10.0  # m/s — capped slow reverse for unsticking
+const REVERSE_FORCE_FACTOR := 0.7  # multiplier on ACCEL when reversing
 
 var _left_action: String
 var _right_action: String
@@ -102,9 +107,12 @@ func _physics_process(delta: float) -> void:
 	var fwd_speed: float = vel.dot(fwd)
 	var lateral_speed: float = vel.dot(right)
 
-	# --- AUTO-ACCELERATION ---
+	# --- REVERSE / AUTO-ACCEL (mutually exclusive) ---
 	var top: float = _effective_top_speed()
-	if fwd_speed < top:
+	var reverse_held: bool = Input.is_key_pressed(reverse_keycode)
+	if reverse_held and fwd_speed > REVERSE_TOP_SPEED:
+		apply_central_force(-fwd * ACCEL * mass * REVERSE_FORCE_FACTOR)
+	elif not reverse_held and fwd_speed < top:
 		apply_central_force(fwd * ACCEL * mass)
 
 	# --- STEERING (2 buttons only) ---

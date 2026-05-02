@@ -178,6 +178,10 @@ emission = Color(1.0, 0.7, 0.0, 1)
 emission_energy_multiplier = 0.6
 roughness = 0.3
 
+[sub_resource type="PhysicsMaterial" id="Mat_bouncy"]
+friction = 0.6
+bounce = 0.5
+
 [node name="Track01" type="Node3D"]
 
 [node name="Floor" type="StaticBody3D" parent="."]
@@ -232,6 +236,7 @@ surface_material_override/0 = SubResource("Mat_wall")
 
 [node name="Ball_Red" type="StaticBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -90, 2, 0)
+physics_material_override = SubResource("Mat_bouncy")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Ball_Red"]
 shape = SubResource("Shape_ball_M")
@@ -242,6 +247,7 @@ surface_material_override/0 = SubResource("Mat_ball_red")
 
 [node name="Ball_Black" type="StaticBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 0)
+physics_material_override = SubResource("Mat_bouncy")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Ball_Black"]
 shape = SubResource("Shape_ball_M")
@@ -252,6 +258,7 @@ surface_material_override/0 = SubResource("Mat_ball_black")
 
 [node name="Ball_Yellow" type="StaticBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 90, 2, 0)
+physics_material_override = SubResource("Mat_bouncy")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Ball_Yellow"]
 shape = SubResource("Shape_ball_M")
@@ -262,6 +269,7 @@ surface_material_override/0 = SubResource("Mat_ball_yellow")
 
 [node name="Ball_Outside_Purple" type="StaticBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -160, 1.4, 50)
+physics_material_override = SubResource("Mat_bouncy")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Ball_Outside_Purple"]
 shape = SubResource("Shape_ball_S")
@@ -272,6 +280,7 @@ surface_material_override/0 = SubResource("Mat_ball_purple")
 
 [node name="Ball_Outside_Green" type="StaticBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -160, 2, -50)
+physics_material_override = SubResource("Mat_bouncy")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Ball_Outside_Green"]
 shape = SubResource("Shape_ball_M")
@@ -282,6 +291,7 @@ surface_material_override/0 = SubResource("Mat_ball_green")
 
 [node name="Ball_Outside_White" type="StaticBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 160, 1.4, -50)
+physics_material_override = SubResource("Mat_bouncy")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Ball_Outside_White"]
 shape = SubResource("Shape_ball_S")
@@ -292,6 +302,7 @@ surface_material_override/0 = SubResource("Mat_ball_white")
 
 [node name="Ball_Outside_Blue" type="StaticBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 160, 2, 50)
+physics_material_override = SubResource("Mat_bouncy")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Ball_Outside_Blue"]
 shape = SubResource("Shape_ball_M")
@@ -302,6 +313,7 @@ surface_material_override/0 = SubResource("Mat_ball_blue")
 
 [node name="PoolCue" type="StaticBody3D" parent="."]
 transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 0, 0.5, 130)
+physics_material_override = SubResource("Mat_bouncy")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="PoolCue"]
 shape = SubResource("Shape_cue")
@@ -312,6 +324,7 @@ surface_material_override/0 = SubResource("Mat_cue")
 
 [node name="ChalkCube" type="StaticBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 175, 0.75, -135)
+physics_material_override = SubResource("Mat_bouncy")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="ChalkCube"]
 shape = SubResource("Shape_chalk")
@@ -322,6 +335,7 @@ surface_material_override/0 = SubResource("Mat_chalk")
 
 [node name="Cone1" type="StaticBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -30, 0.75, 76)
+physics_material_override = SubResource("Mat_bouncy")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Cone1"]
 shape = SubResource("Shape_cone")
@@ -332,6 +346,7 @@ surface_material_override/0 = SubResource("Mat_cone")
 
 [node name="Cone2" type="StaticBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.75, 84)
+physics_material_override = SubResource("Mat_bouncy")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Cone2"]
 shape = SubResource("Shape_cone")
@@ -342,6 +357,7 @@ surface_material_override/0 = SubResource("Mat_cone")
 
 [node name="Cone3" type="StaticBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, 0.75, 76)
+physics_material_override = SubResource("Mat_bouncy")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Cone3"]
 shape = SubResource("Shape_cone")
@@ -352,6 +368,7 @@ surface_material_override/0 = SubResource("Mat_cone")
 
 [node name="Cone4" type="StaticBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, 0.75, -76)
+physics_material_override = SubResource("Mat_bouncy")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Cone4"]
 shape = SubResource("Shape_cone")
@@ -362,6 +379,7 @@ surface_material_override/0 = SubResource("Mat_cone")
 
 [node name="Cone5" type="StaticBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.75, -84)
+physics_material_override = SubResource("Mat_bouncy")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Cone5"]
 shape = SubResource("Shape_cone")
@@ -372,6 +390,7 @@ surface_material_override/0 = SubResource("Mat_cone")
 
 [node name="Cone6" type="StaticBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -30, 0.75, -76)
+physics_material_override = SubResource("Mat_bouncy")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Cone6"]
 shape = SubResource("Shape_cone")
@@ -396,6 +415,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.5, 73)
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="FlagPole_Left"]
 shape = SubResource("Shape_pole")
+disabled = true
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="FlagPole_Left"]
 mesh = SubResource("Mesh_pole")
@@ -411,6 +431,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.5, 87)
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="FlagPole_Right"]
 shape = SubResource("Shape_pole")
+disabled = true
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="FlagPole_Right"]
 mesh = SubResource("Mesh_pole")
@@ -423,6 +444,7 @@ surface_material_override/0 = SubResource("Mat_flag")
 
 [node name="EdgeBall_SE_M" type="StaticBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 130, 2, 42)
+physics_material_override = SubResource("Mat_bouncy")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="EdgeBall_SE_M"]
 shape = SubResource("Shape_ball_M")
@@ -433,6 +455,7 @@ surface_material_override/0 = SubResource("Mat_ball_red")
 
 [node name="EdgeBall_SSE_S" type="StaticBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 80, 1.4, 74)
+physics_material_override = SubResource("Mat_bouncy")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="EdgeBall_SSE_S"]
 shape = SubResource("Shape_ball_S")
@@ -443,6 +466,7 @@ surface_material_override/0 = SubResource("Mat_ball_yellow")
 
 [node name="EdgeBall_NE_M" type="StaticBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 130, 2, -42)
+physics_material_override = SubResource("Mat_bouncy")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="EdgeBall_NE_M"]
 shape = SubResource("Shape_ball_M")
@@ -453,6 +477,7 @@ surface_material_override/0 = SubResource("Mat_ball_blue")
 
 [node name="EdgeBall_NNE_S" type="StaticBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 80, 1.4, -74)
+physics_material_override = SubResource("Mat_bouncy")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="EdgeBall_NNE_S"]
 shape = SubResource("Shape_ball_S")
@@ -463,6 +488,7 @@ surface_material_override/0 = SubResource("Mat_ball_purple")
 
 [node name="EdgeBall_NW_M" type="StaticBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -119, 2, -53)
+physics_material_override = SubResource("Mat_bouncy")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="EdgeBall_NW_M"]
 shape = SubResource("Shape_ball_M")
@@ -473,6 +499,7 @@ surface_material_override/0 = SubResource("Mat_ball_green")
 
 [node name="EdgeBall_SW_M" type="StaticBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -119, 2, 53)
+physics_material_override = SubResource("Mat_bouncy")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="EdgeBall_SW_M"]
 shape = SubResource("Shape_ball_M")
