@@ -11,6 +11,7 @@ extends RigidBody3D
 @export var bot_color: Color = Color(0.2, 0.4, 0.9, 1.0)
 @export var skill: float = 1.0  # 0.5 = sluggish, 1.5 = aggressive (multiplies top speed)
 @export var player_path: NodePath  # set in Main.tscn — used for rubber-banding
+@export var racing_line_offset: float = 0.0  # m perpendicular to centerline (- inner, + outer)
 
 # Same physics baseline as player (BASELINE V0.3 — slow ramp + steer drag + better drift)
 const TOP_SPEED := 42.0
@@ -27,6 +28,7 @@ const STEER_TOP_LOSS := 0.15
 const OVAL_A := 140.0
 const OVAL_B := 80.0
 const TRACK_HALF_WIDTH := 6.0
+const OFF_TRACK_MALUS := 0.5  # 50% top speed when bot strays beyond track band
 
 # AI tuning
 const LOOKAHEAD_RAD := 0.18           # ~10° around the oval — distance to look ahead
@@ -63,6 +65,33 @@ func _effective_top_speed() -> float:
 	return s
 
 
+# Returns the bot's preferred-line point at parametric angle t (centerline + offset along normal).
+func _preferred_point_at(t: float) -> Vector3:
+	var center: Vector3 = Vector3(OVAL_A * cos(t), 0.5, OVAL_B * sin(t))
+	if abs(racing_line_offset) < 0.001:
+		return center
+	# Outward unit normal to ellipse at angle t
+	var nx: float = cos(t) / OVAL_A
+	var nz: float = sin(t) / OVAL_B
+	var nlen: float = sqrt(nx * nx + nz * nz)
+	if nlen < 0.0001:
+		return center
+	nx /= nlen
+	nz /= nlen
+	return center + Vector3(nx * racing_line_offset, 0.0, nz * racing_line_offset)
+
+
+func _off_track_factor() -> float:
+	# Distance to actual centerline (not preferred line) — bot in painted band = no malus
+	var p: Vector3 = global_position
+	var t: float = atan2(p.z / OVAL_B, p.x / OVAL_A)
+	var dx: float = p.x - OVAL_A * cos(t)
+	var dz: float = p.z - OVAL_B * sin(t)
+	if (dx * dx + dz * dz) > (TRACK_HALF_WIDTH * TRACK_HALF_WIDTH):
+		return OFF_TRACK_MALUS
+	return 1.0
+
+
 func _ready() -> void:
 	axis_lock_angular_x = true
 	axis_lock_angular_z = true
@@ -90,13 +119,15 @@ func _physics_process(delta: float) -> void:
 	# 1. Project current position onto the oval (parametric angle t)
 	var cur_t: float = atan2(pos.z / OVAL_B, pos.x / OVAL_A)
 
-	# 2. Look ahead in the racing direction (player goes CCW = decreasing t)
+	# 2. Look ahead in the racing direction along the bot's PREFERRED LINE (with offset)
 	var look_t: float = cur_t - LOOKAHEAD_RAD
-	var target: Vector3 = Vector3(OVAL_A * cos(look_t), pos.y, OVAL_B * sin(look_t))
+	var target: Vector3 = _preferred_point_at(look_t)
+	target.y = pos.y
 
-	# 3. Compute closest point on centerline (= same angle, on the curve) for off-track check
-	var closest_on_centerline: Vector3 = Vector3(OVAL_A * cos(cur_t), pos.y, OVAL_B * sin(cur_t))
-	var to_centerline: Vector3 = closest_on_centerline - pos
+	# 3. Compute closest point on bot's PREFERRED line for magnetic pull-back
+	var preferred_pt: Vector3 = _preferred_point_at(cur_t)
+	preferred_pt.y = pos.y
+	var to_centerline: Vector3 = preferred_pt - pos  # named "centerline" for legacy, now means preferred line
 	to_centerline.y = 0.0
 	var off_track_dist: float = to_centerline.length()
 
@@ -149,7 +180,13 @@ func _physics_process(delta: float) -> void:
 			to_hit.y = 0.0
 			var hit_cross: float = fwd.z * to_hit.x - fwd.x * to_hit.z
 			if abs(hit_cross) < 0.5:
-				avoid_steer = 0.9
+				# Obstacle dead ahead — dodge TOWARD the bot's preferred line
+				# (turning away from the obstacle and back to the racing line at once)
+				if to_centerline.length() > 0.5:
+					var center_cross: float = fwd.z * to_centerline.x - fwd.x * to_centerline.z
+					avoid_steer = sign(center_cross) * 0.9
+				else:
+					avoid_steer = 0.9
 			else:
 				avoid_steer = -sign(hit_cross) * 0.9
 			avoid_active = true
@@ -162,8 +199,8 @@ func _physics_process(delta: float) -> void:
 		steer_input = centerline_steer
 	steer_input = clamp(steer_input, -1.0, 1.0)
 
-	# 10. Auto-acceleration (effective top reduced when steering — turning bleeds speed)
-	var top: float = _effective_top_speed() * (1.0 - abs(steer_input) * STEER_TOP_LOSS)
+	# 10. Auto-acceleration (top × off-track malus × steer drag)
+	var top: float = _effective_top_speed() * _off_track_factor() * (1.0 - abs(steer_input) * STEER_TOP_LOSS)
 	if fwd_speed < top:
 		apply_central_force(fwd * ACCEL * mass)
 

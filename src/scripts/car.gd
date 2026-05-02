@@ -29,9 +29,15 @@ const HARD_TURN_SPEED_FACTOR := 0.55 # speed > 55% top to "drift" — easier to 
 const STEER_TOP_LOSS := 0.15     # at full steer, effective top is reduced by this fraction (15%)
 
 # --- Player catch-up rubber-banding (aggressive — make last-place comeback feel real) ---
-const PLAYER_RUBBER_MAX := 0.60  # +60% top speed boost at max gap (was 0.30)
-const PLAYER_RUBBER_DEAD_ZONE := 0.02  # no boost within 2% of a lap behind
-const PLAYER_RUBBER_FULL_GAP := 0.25   # 25% lap behind = max boost (was 50%)
+const PLAYER_RUBBER_MAX := 0.80  # +80% top speed boost at max gap
+const PLAYER_RUBBER_DEAD_ZONE := 0.02
+const PLAYER_RUBBER_FULL_GAP := 0.15   # 15% lap behind = max boost — kicks in fast
+
+# --- Off-track speed malus (track is centerline ± TRACK_HALF_WIDTH) ---
+const OVAL_A := 140.0
+const OVAL_B := 80.0
+const TRACK_HALF_WIDTH := 6.0
+const OFF_TRACK_MALUS := 0.5  # 50% top speed when off the painted track
 
 # --- Test toggle (T cycles slow/normal/fast, R respawns) ---
 const SPEED_MODES := ["SLOW", "NORMAL", "FAST"]
@@ -60,6 +66,19 @@ func _catch_up_factor() -> float:
 		return 1.0
 	var t: float = clamp(_progress_gap_to_leader / PLAYER_RUBBER_FULL_GAP, 0.0, 1.0)
 	return 1.0 + t * PLAYER_RUBBER_MAX
+
+
+func _off_track_factor() -> float:
+	# Cheap centerline projection via parametric angle
+	var p: Vector3 = global_position
+	var t: float = atan2(p.z / OVAL_B, p.x / OVAL_A)
+	var center_x: float = OVAL_A * cos(t)
+	var center_z: float = OVAL_B * sin(t)
+	var dx: float = p.x - center_x
+	var dz: float = p.z - center_z
+	if (dx * dx + dz * dz) > (TRACK_HALF_WIDTH * TRACK_HALF_WIDTH):
+		return OFF_TRACK_MALUS
+	return 1.0
 
 var _left_action: String
 var _right_action: String
@@ -136,8 +155,8 @@ func _physics_process(delta: float) -> void:
 		steer_input -= 1.0
 
 	# --- REVERSE / AUTO-ACCEL (mutually exclusive) ---
-	# Effective top: base × catch-up rubber × (1 - steer_drag)
-	var top: float = _effective_top_speed() * _catch_up_factor() * (1.0 - abs(steer_input) * STEER_TOP_LOSS)
+	# Effective top: base × catch-up rubber × off-track malus × (1 - steer_drag)
+	var top: float = _effective_top_speed() * _catch_up_factor() * _off_track_factor() * (1.0 - abs(steer_input) * STEER_TOP_LOSS)
 	var reverse_held: bool = Input.is_key_pressed(reverse_keycode)
 	if reverse_held and fwd_speed > REVERSE_TOP_SPEED:
 		apply_central_force(-fwd * ACCEL * mass * REVERSE_FORCE_FACTOR)
