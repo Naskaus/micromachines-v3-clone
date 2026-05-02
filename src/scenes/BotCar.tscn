@@ -1,0 +1,31 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://scripts/bot_car.gd" id="1_bot"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_car"]
+size = Vector3(1.0, 0.5, 2.0)
+
+[sub_resource type="BoxMesh" id="BoxMesh_body"]
+size = Vector3(1.0, 0.5, 2.0)
+
+[sub_resource type="StandardMaterial3D" id="Mat_blue"]
+albedo_color = Color(0.2, 0.4, 0.9, 1)
+roughness = 0.7
+
+[sub_resource type="PhysicsMaterial" id="PhysMat_car"]
+friction = 0.0
+bounce = 0.1
+
+[node name="BotCar" type="RigidBody3D"]
+mass = 1.0
+physics_material_override = SubResource("PhysMat_car")
+linear_damp = 0.5
+angular_damp = 4.0
+script = ExtResource("1_bot")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+shape = SubResource("BoxShape3D_car")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
+mesh = SubResource("BoxMesh_body")
+surface_material_override/0 = SubResource("Mat_blue")

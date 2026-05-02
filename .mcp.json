@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "godot-mcp": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "/Users/bpia/Documents/Seb/Coding/naskaus/lab/godot-mcp-server/build/index.js"
+      ],
+      "env": {}
+    }
+  }
+}

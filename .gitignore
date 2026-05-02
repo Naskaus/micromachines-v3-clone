@@ -1,0 +1,35 @@
+# Godot 4
+.godot/
+.import/
+export.cfg
+export_presets.cfg
+*.translation
+
+# Mono/C# (not used here, but future-proof)
+.mono/
+data_*/
+mono_crash.*.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*~
+
+# Builds
+builds/
+*.app/
+*.exe
+*.x86_64
+*.dmg
+*.zip
+
+# Logs
+*.log
+
+# Local Claude Code config (per-machine permissions)
+.claude/settings.local.json

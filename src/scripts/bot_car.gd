@@ -1,0 +1,181 @@
+extends RigidBody3D
+
+# AI bot car — projects its position onto the oval centerline at every frame, then targets
+# a point a small angle ahead. Adds a "magnetic" corrective force to pull the bot back to
+# the centerline if it strays beyond 70% of the track half-width. This guarantees the bot
+# stays between the two white painted lines.
+#
+# V0.4: + raycast obstacle avoidance (cones, balls, walls) + Mario-Kart-style rubber-banding
+# (top speed scales ±15% based on parametric distance to player).
+
+@export var bot_color: Color = Color(0.2, 0.4, 0.9, 1.0)
+@export var skill: float = 1.0  # 0.5 = sluggish, 1.5 = aggressive (multiplies top speed)
+@export var player_path: NodePath  # set in Main.tscn — used for rubber-banding
+
+# Same physics baseline as player (BASELINE V0.1) so collisions feel symmetric
+const TOP_SPEED := 28.0
+const ACCEL := 50.0
+const TURN_RATE := 3.4
+const TURN_RATE_LOW_SPEED := 2.0
+const LATERAL_GRIP := 8.0
+const DRIFT_GRIP := 3.0
+const HARD_TURN_SPEED_FACTOR := 0.7
+
+# Oval (must match Track01.tscn / pool_felt shader / race_manager)
+const OVAL_A := 140.0
+const OVAL_B := 80.0
+const TRACK_HALF_WIDTH := 6.0
+
+# AI tuning
+const LOOKAHEAD_RAD := 0.18           # ~10° around the oval — distance to look ahead
+const STEER_GAIN := 2.0               # steering aggressiveness
+const OFF_TRACK_THRESHOLD := 4.2      # 70% of track half width (6m) — start pulling back
+const CENTERLINE_FORCE := 25.0        # N per meter of off-track offset
+
+# Obstacle avoidance
+const RAYCAST_LENGTH := 7.0           # m — how far ahead we look for obstacles
+const AVOID_STEER_BLEND := 0.7        # 0=ignore obstacles, 1=ignore centerline; blend factor
+
+# Rubber-banding (catch-up / slow-down based on parametric distance to player)
+const RUBBER_MAX := 0.25              # ±25% top-speed adjustment (was 0.15, not enough catch-up)
+const RUBBER_DEAD_ZONE := 0.05        # rad — no adjust within this small angle of player
+
+var _base_top_speed: float = TOP_SPEED
+var _bot_top_speed: float = TOP_SPEED
+var _player: Node3D = null
+
+# Boost (set by boost pads)
+var _boost_until: float = 0.0
+var _boost_factor: float = 1.0
+
+
+func apply_boost(duration: float, factor: float) -> void:
+	_boost_until = Time.get_ticks_msec() / 1000.0 + duration
+	_boost_factor = factor
+
+
+func _effective_top_speed() -> float:
+	var s: float = _bot_top_speed
+	if Time.get_ticks_msec() / 1000.0 < _boost_until:
+		s *= _boost_factor
+	return s
+
+
+func _ready() -> void:
+	axis_lock_angular_x = true
+	axis_lock_angular_z = true
+	linear_damp = 0.5
+	angular_damp = 4.0
+	_base_top_speed = TOP_SPEED * skill
+	_bot_top_speed = _base_top_speed
+	if player_path and not player_path.is_empty():
+		_player = get_node_or_null(player_path) as Node3D
+
+	# Recolor mesh
+	var mesh: MeshInstance3D = $MeshInstance3D
+	var src_mat: Material = mesh.get_active_material(0)
+	var mat: StandardMaterial3D = (src_mat.duplicate() if src_mat else StandardMaterial3D.new())
+	mat.albedo_color = bot_color
+	mesh.set_surface_override_material(0, mat)
+
+
+func _physics_process(delta: float) -> void:
+	if freeze:
+		return
+
+	var pos: Vector3 = global_position
+
+	# 1. Project current position onto the oval (parametric angle t)
+	var cur_t: float = atan2(pos.z / OVAL_B, pos.x / OVAL_A)
+
+	# 2. Look ahead in the racing direction (player goes CCW = decreasing t)
+	var look_t: float = cur_t - LOOKAHEAD_RAD
+	var target: Vector3 = Vector3(OVAL_A * cos(look_t), pos.y, OVAL_B * sin(look_t))
+
+	# 3. Compute closest point on centerline (= same angle, on the curve) for off-track check
+	var closest_on_centerline: Vector3 = Vector3(OVAL_A * cos(cur_t), pos.y, OVAL_B * sin(cur_t))
+	var to_centerline: Vector3 = closest_on_centerline - pos
+	to_centerline.y = 0.0
+	var off_track_dist: float = to_centerline.length()
+
+	# 4. Compute physics inputs
+	var fwd: Vector3 = -transform.basis.z
+	var right: Vector3 = transform.basis.x
+	var vel: Vector3 = linear_velocity
+	var fwd_speed: float = vel.dot(fwd)
+	var lateral_speed: float = vel.dot(right)
+
+	# 5. Rubber-banding: scale top speed based on parametric distance to player
+	if _player:
+		var player_t: float = atan2(_player.global_position.z / OVAL_B, _player.global_position.x / OVAL_A)
+		# Player goes CCW (decreasing t). bot_t > player_t = bot is behind. wrap to [-π, π].
+		var t_diff: float = wrapf(cur_t - player_t, -PI, PI)
+		var rubber: float = 1.0
+		if abs(t_diff) > RUBBER_DEAD_ZONE:
+			rubber = 1.0 + clamp(t_diff / (PI * 0.5), -1.0, 1.0) * RUBBER_MAX
+		_bot_top_speed = _base_top_speed * rubber
+
+	# 6. Auto-acceleration (uses effective top speed including boost)
+	var top: float = _effective_top_speed()
+	if fwd_speed < top:
+		apply_central_force(fwd * ACCEL * mass)
+
+	# 7. Magnetic pull back to centerline if off-track
+	if off_track_dist > OFF_TRACK_THRESHOLD:
+		var pull_strength: float = (off_track_dist - OFF_TRACK_THRESHOLD) * CENTERLINE_FORCE
+		apply_central_force(to_centerline.normalized() * pull_strength * mass)
+
+	# 8. Centerline-following steering
+	var to_target: Vector3 = target - pos
+	to_target.y = 0.0
+	var centerline_steer: float = 0.0
+	if to_target.length_squared() > 0.0001:
+		var cross_y: float = fwd.z * to_target.x - fwd.x * to_target.z
+		var fwd_xz_len: float = sqrt(fwd.x * fwd.x + fwd.z * fwd.z)
+		var to_target_len: float = to_target.length()
+		var sin_angle: float = cross_y / (fwd_xz_len * to_target_len + 0.0001)
+		centerline_steer = clamp(sin_angle * STEER_GAIN, -1.0, 1.0)
+
+	# 9. Obstacle avoidance via forward raycast
+	var avoid_steer: float = 0.0
+	var avoid_active: bool = false
+	var space_state: PhysicsDirectSpaceState3D = get_world_3d().direct_space_state
+	var ray_origin: Vector3 = pos + Vector3(0, 0.3, 0)
+	var ray_end: Vector3 = ray_origin + fwd * RAYCAST_LENGTH
+	var query: PhysicsRayQueryParameters3D = PhysicsRayQueryParameters3D.create(ray_origin, ray_end)
+	query.exclude = [self.get_rid()]
+	var hit: Dictionary = space_state.intersect_ray(query)
+	if not hit.is_empty():
+		# Don't dodge other cars (RigidBody3D) — let collision physics handle them
+		var hit_body: Object = hit.get("collider")
+		if hit_body and not (hit_body is RigidBody3D):
+			# Compute side of hit relative to car forward
+			var to_hit: Vector3 = hit.position - pos
+			to_hit.y = 0.0
+			var hit_cross: float = fwd.z * to_hit.x - fwd.x * to_hit.z
+			# hit_cross > 0 = hit on the LEFT → steer right (negative)
+			# hit_cross < 0 = hit on the RIGHT → steer left (positive)
+			# If exactly straight (hit_cross ~ 0), default to dodging right (positive steer = left)
+			if abs(hit_cross) < 0.5:
+				avoid_steer = 0.9  # dodge left by default
+			else:
+				avoid_steer = -sign(hit_cross) * 0.9
+			avoid_active = true
+
+	# 10. Combine: blend obstacle avoidance over the centerline steering
+	var steer_input: float
+	if avoid_active:
+		steer_input = lerp(centerline_steer, avoid_steer, AVOID_STEER_BLEND)
+	else:
+		steer_input = centerline_steer
+	steer_input = clamp(steer_input, -1.0, 1.0)
+
+	var speed_ratio: float = clamp(fwd_speed / top, 0.0, 1.0)
+	var turn_rate: float = lerp(TURN_RATE_LOW_SPEED, TURN_RATE, speed_ratio)
+	angular_velocity.y = steer_input * turn_rate
+
+	# 11. Drift / lateral grip
+	var is_hard_turning: bool = abs(steer_input) > 0.5 and speed_ratio > HARD_TURN_SPEED_FACTOR
+	var grip: float = DRIFT_GRIP if is_hard_turning else LATERAL_GRIP
+	var lateral_correction: Vector3 = -right * lateral_speed * grip * delta
+	apply_central_impulse(lateral_correction * mass)

@@ -1,0 +1,152 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/Track01.tscn" id="1_track"]
+[ext_resource type="PackedScene" path="res://scenes/Car.tscn" id="2_car"]
+[ext_resource type="PackedScene" path="res://scenes/BotCar.tscn" id="3_bot"]
+[ext_resource type="Script" path="res://scripts/camera_follow.gd" id="4_cam"]
+[ext_resource type="Script" path="res://scripts/race_manager.gd" id="5_race"]
+
+[sub_resource type="Environment" id="Env_default"]
+background_mode = 1
+background_color = Color(0.5, 0.65, 0.85, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.7, 0.75, 0.85, 1)
+ambient_light_energy = 0.5
+
+[node name="Main" type="Node3D"]
+
+[node name="Track01" parent="." instance=ExtResource("1_track")]
+
+[node name="P1_Red" parent="." instance=ExtResource("2_car")]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, 5, 0.5, 82)
+player_id = 1
+hud_label_path = NodePath("../HUD/SpeedLabel")
+spawn_pos = Vector3(5, 0.5, 82)
+spawn_yaw_deg = -90.0
+car_color = Color(0.9, 0.2, 0.2, 1)
+respawn_keycode = 82
+
+[node name="P2_Cyan" parent="." instance=ExtResource("2_car")]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, 5, 0.5, 78)
+player_id = 2
+spawn_pos = Vector3(5, 0.5, 78)
+spawn_yaw_deg = -90.0
+car_color = Color(0.20, 0.85, 0.95, 1)
+respawn_keycode = 80
+
+[node name="Bot1_Blue" parent="." instance=ExtResource("3_bot")]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, 10, 0.5, 84)
+bot_color = Color(0.2, 0.4, 0.9, 1)
+skill = 0.97
+player_path = NodePath("../P1_Red")
+
+[node name="Bot2_Yellow" parent="." instance=ExtResource("3_bot")]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, 10, 0.5, 80)
+bot_color = Color(0.95, 0.78, 0.12, 1)
+skill = 1.00
+player_path = NodePath("../P1_Red")
+
+[node name="Bot3_Green" parent="." instance=ExtResource("3_bot")]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, 10, 0.5, 76)
+bot_color = Color(0.20, 0.75, 0.30, 1)
+skill = 0.95
+player_path = NodePath("../P1_Red")
+
+[node name="Bot4_Purple" parent="." instance=ExtResource("3_bot")]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, 15, 0.5, 80)
+bot_color = Color(0.55, 0.20, 0.80, 1)
+skill = 1.03
+player_path = NodePath("../P1_Red")
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.258819, 0.965926, 0, -0.965926, 0.258819, 5, 22, 86)
+far = 2000.0
+script = ExtResource("4_cam")
+target_paths = [NodePath("../P1_Red"), NodePath("../P2_Cyan")]
+height = 22.0
+back_offset = 6.0
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.866025, -0.433013, 0.25, 0, 0.5, 0.866025, -0.5, -0.75, 0.433013, 0, 50, 0)
+shadow_enabled = true
+directional_shadow_max_distance = 300.0
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Env_default")
+
+[node name="HUD" type="CanvasLayer" parent="."]
+
+[node name="SpeedLabel" type="Label" parent="HUD"]
+offset_left = 20.0
+offset_top = 20.0
+offset_right = 600.0
+offset_bottom = 100.0
+text = "Speed: NORMAL  (top 28 m/s)
+P1: A/D · respawn R    P2: J/L · respawn P
+[T] cycle speed   [BACKSPACE] restart course"
+theme_override_colors/font_color = Color(1, 1, 0.9, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 6
+theme_override_font_sizes/font_size = 20
+
+[node name="RaceInfoLabel" type="Label" parent="HUD"]
+offset_left = 280.0
+offset_top = 20.0
+offset_right = 1000.0
+offset_bottom = 180.0
+text = "Préparez-vous…"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(1, 1, 0.95, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 6
+theme_override_font_sizes/font_size = 22
+
+[node name="CountdownLabel" type="Label" parent="HUD"]
+offset_left = 540.0
+offset_top = 280.0
+offset_right = 740.0
+offset_bottom = 440.0
+text = ""
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_colors/font_color = Color(1, 1, 0.4, 1)
+theme_override_colors/font_outline_color = Color(0.05, 0.05, 0.05, 1)
+theme_override_constants/outline_size = 12
+theme_override_font_sizes/font_size = 120
+
+[node name="ResultsLabel" type="Label" parent="HUD"]
+offset_left = 360.0
+offset_top = 180.0
+offset_right = 920.0
+offset_bottom = 540.0
+text = ""
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_outline_color = Color(0.05, 0.05, 0.05, 1)
+theme_override_constants/outline_size = 6
+theme_override_font_sizes/font_size = 28
+
+[node name="MenuLabel" type="Label" parent="HUD"]
+offset_left = 240.0
+offset_top = 140.0
+offset_right = 1040.0
+offset_bottom = 580.0
+text = ""
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_colors/font_color = Color(1, 1, 0.7, 1)
+theme_override_colors/font_outline_color = Color(0.05, 0.05, 0.05, 1)
+theme_override_constants/outline_size = 8
+theme_override_font_sizes/font_size = 38
+
+[node name="RaceManager" type="Node" parent="."]
+script = ExtResource("5_race")
+player_paths = [NodePath("../P1_Red"), NodePath("../P2_Cyan")]
+bot_paths = [NodePath("../Bot1_Blue"), NodePath("../Bot2_Yellow"), NodePath("../Bot3_Green"), NodePath("../Bot4_Purple")]
+finish_line_path = NodePath("../Track01/FinishLine")
+camera_path = NodePath("../Camera3D")
+menu_label_path = NodePath("../HUD/MenuLabel")
+countdown_label_path = NodePath("../HUD/CountdownLabel")
+race_info_label_path = NodePath("../HUD/RaceInfoLabel")
+results_label_path = NodePath("../HUD/ResultsLabel")
