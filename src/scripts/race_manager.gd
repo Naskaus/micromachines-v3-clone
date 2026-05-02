@@ -11,7 +11,8 @@ extends Node
 const TOTAL_LAPS := 3
 const COUNTDOWN_SECONDS := 3
 const MIN_LAP_TIME := 4.0    # debounce — must be < fastest possible lap
-const ELIMINATION_DIST_FROM_LEADER := 120.0  # m — racers beyond this are eliminated (was 50, too aggressive)
+const ELIMINATION_DIST_FROM_LEADER := 120.0  # m — racers beyond this are eliminated
+const LEADER_CHANGE_HYSTERESIS := 0.03  # 3% lap progress buffer to avoid camera flicker
 
 # Must match Track01 oval (used for live position ranking)
 const OVAL_A := 140.0
@@ -261,26 +262,65 @@ func _remove_racer_from_race(racer: Node) -> void:
 
 
 func _update_leader_and_camera() -> void:
+	# Camera prefers the best active PLAYER (so player always sees themselves),
+	# falls back to the leading bot if no player is active.
+	var camera_target: Node = _pick_camera_target()
+	if camera_target == null:
+		return
+	# Hysteresis: don't switch camera target unless the new one is meaningfully ahead
+	if camera_target != _current_leader and _current_leader != null and _racer_data.has(_current_leader):
+		var still_active: bool = not _eliminated.has(_current_leader) and not _racer_data[_current_leader].finished
+		if still_active:
+			var cur_prog: float = _racer_progress(_current_leader)
+			var new_prog: float = _racer_progress(camera_target)
+			if new_prog < cur_prog + LEADER_CHANGE_HYSTERESIS:
+				return
+	if camera_target != _current_leader:
+		_current_leader = camera_target
+		if _camera and _camera.has_method("set_leader_target"):
+			_camera.set_leader_target(camera_target)
+
+
+func _pick_camera_target() -> Node:
+	# Best active human player wins
+	var best_player: Node = null
+	var best_player_prog: float = -INF
+	for p in _players:
+		if _eliminated.has(p):
+			continue
+		if _racer_data[p].finished:
+			continue
+		var prog: float = _racer_progress(p)
+		if prog > best_player_prog:
+			best_player_prog = prog
+			best_player = p
+	if best_player != null:
+		return best_player
+	# No active player → fallback to actual race leader (likely a bot)
 	var rankings: Array = _compute_rankings()
-	var new_leader: Node = null
 	for r in rankings:
 		if not _eliminated.has(r) and not _racer_data[r].finished:
-			new_leader = r
-			break
-	if new_leader == null:
-		return
-	if new_leader != _current_leader:
-		_current_leader = new_leader
-		if _camera and _camera.has_method("set_leader_target"):
-			_camera.set_leader_target(new_leader)
+			return r
+	return null
+
+
+func _get_race_leader() -> Node:
+	# Highest-progress active racer (regardless of player/bot) — used for elimination distance
+	var rankings: Array = _compute_rankings()
+	for r in rankings:
+		if not _eliminated.has(r) and not _racer_data[r].finished:
+			return r
+	return null
 
 
 func _check_eliminations() -> void:
-	if _current_leader == null:
+	# Eliminations are relative to the ACTUAL race leader, not the camera target
+	var race_leader: Node = _get_race_leader()
+	if race_leader == null:
 		return
-	var leader_pos: Vector3 = _current_leader.global_position
+	var leader_pos: Vector3 = race_leader.global_position
 	for r in _racers:
-		if r == _current_leader:
+		if r == race_leader:
 			continue
 		if _eliminated.has(r):
 			continue
@@ -314,9 +354,10 @@ func _update_race_hud() -> void:
 		return
 	var rankings: Array = _compute_rankings()
 	var lines: Array[String] = []
-	# Always show the leader at the top
-	if _current_leader and _racer_data.has(_current_leader):
-		var ld: Dictionary = _racer_data[_current_leader]
+	# Show the actual race leader at the top (not the camera target)
+	var race_leader: Node = _get_race_leader()
+	if race_leader and _racer_data.has(race_leader):
+		var ld: Dictionary = _racer_data[race_leader]
 		lines.append("LEADER : %s — Tour %d/%d" % [ld.name, min(ld.laps + 1, TOTAL_LAPS), TOTAL_LAPS])
 	# Show each player's status
 	for i in range(_players.size()):

@@ -17,14 +17,15 @@ extends RigidBody3D
 @export var respawn_keycode: int = KEY_R  # which key respawns this car
 @export var reverse_keycode: int = KEY_S  # held to reverse out of a stuck spot
 
-# --- Tuning constants (BASELINE V0.1) ---
-const TOP_SPEED := 28.0          # m/s — cruise speed
-const ACCEL := 50.0              # m/s² — snappy launch, overcomes residual damping
+# --- Tuning constants (BASELINE V0.2 — slow ramp + steer drag) ---
+const TOP_SPEED := 42.0          # m/s — cruise speed (was 28)
+const ACCEL := 20.0              # m/s² — slow ramp, ~2s from 0 to top (was 50)
 const TURN_RATE := 3.4           # rad/s — yaw rate at full speed
 const TURN_RATE_LOW_SPEED := 2.0 # rad/s — yaw rate when nearly stopped (less twitchy)
 const LATERAL_GRIP := 8.0        # how hard we kill sideways velocity (higher = less slide)
 const DRIFT_GRIP := 3.0          # lateral grip when player is hard-turning (drift)
 const HARD_TURN_SPEED_FACTOR := 0.7  # speed must be >70% top to "drift"
+const STEER_TOP_LOSS := 0.15     # at full steer, effective top is reduced by this fraction (15%)
 
 # --- Test toggle (T cycles slow/normal/fast, R respawns) ---
 const SPEED_MODES := ["SLOW", "NORMAL", "FAST"]
@@ -107,20 +108,21 @@ func _physics_process(delta: float) -> void:
 	var fwd_speed: float = vel.dot(fwd)
 	var lateral_speed: float = vel.dot(right)
 
-	# --- REVERSE / AUTO-ACCEL (mutually exclusive) ---
-	var top: float = _effective_top_speed()
-	var reverse_held: bool = Input.is_key_pressed(reverse_keycode)
-	if reverse_held and fwd_speed > REVERSE_TOP_SPEED:
-		apply_central_force(-fwd * ACCEL * mass * REVERSE_FORCE_FACTOR)
-	elif not reverse_held and fwd_speed < top:
-		apply_central_force(fwd * ACCEL * mass)
-
-	# --- STEERING (2 buttons only) ---
+	# --- STEERING (2 buttons only) — read first because it modulates the effective top speed ---
 	var steer_input: float = 0.0
 	if Input.is_action_pressed(_left_action):
 		steer_input += 1.0
 	if Input.is_action_pressed(_right_action):
 		steer_input -= 1.0
+
+	# --- REVERSE / AUTO-ACCEL (mutually exclusive) ---
+	# Effective top is reduced when steering hard — turning naturally bleeds speed.
+	var top: float = _effective_top_speed() * (1.0 - abs(steer_input) * STEER_TOP_LOSS)
+	var reverse_held: bool = Input.is_key_pressed(reverse_keycode)
+	if reverse_held and fwd_speed > REVERSE_TOP_SPEED:
+		apply_central_force(-fwd * ACCEL * mass * REVERSE_FORCE_FACTOR)
+	elif not reverse_held and fwd_speed < top:
+		apply_central_force(fwd * ACCEL * mass)
 
 	var speed_ratio: float = clamp(fwd_speed / top, 0.0, 1.0)
 	var turn_rate: float = lerp(TURN_RATE_LOW_SPEED, TURN_RATE, speed_ratio)

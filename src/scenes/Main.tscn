@@ -83,7 +83,7 @@ offset_left = 20.0
 offset_top = 20.0
 offset_right = 600.0
 offset_bottom = 100.0
-text = "Speed: NORMAL  (top 28 m/s)
+text = "Speed: NORMAL  (top 42 m/s)
 P1: A/D · S=back · R=respawn    P2: J/L · K=back · P=respawn
 [T] cycle speed   [BACKSPACE] restart course"
 theme_override_colors/font_color = Color(1, 1, 0.9, 1)

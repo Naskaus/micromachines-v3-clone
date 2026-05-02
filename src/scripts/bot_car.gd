@@ -12,14 +12,15 @@ extends RigidBody3D
 @export var skill: float = 1.0  # 0.5 = sluggish, 1.5 = aggressive (multiplies top speed)
 @export var player_path: NodePath  # set in Main.tscn — used for rubber-banding
 
-# Same physics baseline as player (BASELINE V0.1) so collisions feel symmetric
-const TOP_SPEED := 28.0
-const ACCEL := 50.0
+# Same physics baseline as player (BASELINE V0.2 — slow ramp + steer drag)
+const TOP_SPEED := 42.0
+const ACCEL := 20.0
 const TURN_RATE := 3.4
 const TURN_RATE_LOW_SPEED := 2.0
 const LATERAL_GRIP := 8.0
 const DRIFT_GRIP := 3.0
 const HARD_TURN_SPEED_FACTOR := 0.7
+const STEER_TOP_LOSS := 0.15
 
 # Oval (must match Track01.tscn / pool_felt shader / race_manager)
 const OVAL_A := 140.0
@@ -115,17 +116,12 @@ func _physics_process(delta: float) -> void:
 			rubber = 1.0 + clamp(t_diff / (PI * 0.5), -1.0, 1.0) * RUBBER_MAX
 		_bot_top_speed = _base_top_speed * rubber
 
-	# 6. Auto-acceleration (uses effective top speed including boost)
-	var top: float = _effective_top_speed()
-	if fwd_speed < top:
-		apply_central_force(fwd * ACCEL * mass)
-
-	# 7. Magnetic pull back to centerline if off-track
+	# 6. Magnetic pull back to centerline if off-track
 	if off_track_dist > OFF_TRACK_THRESHOLD:
 		var pull_strength: float = (off_track_dist - OFF_TRACK_THRESHOLD) * CENTERLINE_FORCE
 		apply_central_force(to_centerline.normalized() * pull_strength * mass)
 
-	# 8. Centerline-following steering
+	# 7. Centerline-following steering
 	var to_target: Vector3 = target - pos
 	to_target.y = 0.0
 	var centerline_steer: float = 0.0
@@ -136,7 +132,7 @@ func _physics_process(delta: float) -> void:
 		var sin_angle: float = cross_y / (fwd_xz_len * to_target_len + 0.0001)
 		centerline_steer = clamp(sin_angle * STEER_GAIN, -1.0, 1.0)
 
-	# 9. Obstacle avoidance via forward raycast
+	# 8. Obstacle avoidance via forward raycast
 	var avoid_steer: float = 0.0
 	var avoid_active: bool = false
 	var space_state: PhysicsDirectSpaceState3D = get_world_3d().direct_space_state
@@ -146,23 +142,18 @@ func _physics_process(delta: float) -> void:
 	query.exclude = [self.get_rid()]
 	var hit: Dictionary = space_state.intersect_ray(query)
 	if not hit.is_empty():
-		# Don't dodge other cars (RigidBody3D) — let collision physics handle them
 		var hit_body: Object = hit.get("collider")
 		if hit_body and not (hit_body is RigidBody3D):
-			# Compute side of hit relative to car forward
 			var to_hit: Vector3 = hit.position - pos
 			to_hit.y = 0.0
 			var hit_cross: float = fwd.z * to_hit.x - fwd.x * to_hit.z
-			# hit_cross > 0 = hit on the LEFT → steer right (negative)
-			# hit_cross < 0 = hit on the RIGHT → steer left (positive)
-			# If exactly straight (hit_cross ~ 0), default to dodging right (positive steer = left)
 			if abs(hit_cross) < 0.5:
-				avoid_steer = 0.9  # dodge left by default
+				avoid_steer = 0.9
 			else:
 				avoid_steer = -sign(hit_cross) * 0.9
 			avoid_active = true
 
-	# 10. Combine: blend obstacle avoidance over the centerline steering
+	# 9. Combine steer
 	var steer_input: float
 	if avoid_active:
 		steer_input = lerp(centerline_steer, avoid_steer, AVOID_STEER_BLEND)
@@ -170,11 +161,17 @@ func _physics_process(delta: float) -> void:
 		steer_input = centerline_steer
 	steer_input = clamp(steer_input, -1.0, 1.0)
 
+	# 10. Auto-acceleration (effective top reduced when steering — turning bleeds speed)
+	var top: float = _effective_top_speed() * (1.0 - abs(steer_input) * STEER_TOP_LOSS)
+	if fwd_speed < top:
+		apply_central_force(fwd * ACCEL * mass)
+
+	# 11. Apply angular velocity (yaw rate scales with current speed)
 	var speed_ratio: float = clamp(fwd_speed / top, 0.0, 1.0)
 	var turn_rate: float = lerp(TURN_RATE_LOW_SPEED, TURN_RATE, speed_ratio)
 	angular_velocity.y = steer_input * turn_rate
 
-	# 11. Drift / lateral grip
+	# 12. Drift / lateral grip
 	var is_hard_turning: bool = abs(steer_input) > 0.5 and speed_ratio > HARD_TURN_SPEED_FACTOR
 	var grip: float = DRIFT_GRIP if is_hard_turning else LATERAL_GRIP
 	var lateral_correction: Vector3 = -right * lateral_speed * grip * delta
