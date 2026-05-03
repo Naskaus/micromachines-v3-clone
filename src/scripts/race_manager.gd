@@ -381,7 +381,11 @@ func _feed_progress_gaps_to_players() -> void:
 		p.set_race_progress_gap(gap)
 
 
-func _input(event: InputEvent) -> void:
+func _unhandled_input(event: InputEvent) -> void:
+	# _unhandled_input means: any focused Control (e.g. the room-code LineEdit)
+	# consumes its keystrokes FIRST, and we only see what's left over.
+	# This is what prevents BACKSPACE from reloading the scene while the user
+	# is editing a 4-letter join code.
 	# Touch (mobile/web): tap the screen to start solo mode from menu, or restart from results
 	if event is InputEventScreenTouch and event.pressed:
 		if _state == State.MENU:

@@ -62,6 +62,7 @@ func _ready() -> void:
 	_btn_lobby_leave.pressed.connect(_on_back_to_root)
 	_btn_error_back.pressed.connect(_on_back_to_root)
 	_join_code_input.text_submitted.connect(func(_t): _on_join_confirm_pressed())
+	_join_code_input.text_changed.connect(_on_join_code_changed)
 
 	if NetworkClient:
 		NetworkClient.connected.connect(_on_net_connected)
@@ -102,7 +103,24 @@ func _on_create_pressed() -> void:
 func _on_join_pressed() -> void:
 	_join_code_input.text = ""
 	_show_panel(Step.JOIN_INPUT)
+	# Wait one frame so the panel is fully visible before we try to take focus —
+	# otherwise grab_focus() can no-op while the LineEdit is mid-show.
+	await get_tree().process_frame
 	_join_code_input.grab_focus()
+	_join_code_input.caret_column = 0
+
+
+func _on_join_code_changed(new_text: String) -> void:
+	# Force uppercase + strip non-letters as the user types — the server only
+	# accepts A-Z codes, and we don't want to silently transform on submit.
+	var caret: int = _join_code_input.caret_column
+	var cleaned: String = ""
+	for c in new_text.to_upper():
+		if c >= "A" and c <= "Z":
+			cleaned += c
+	if cleaned != new_text:
+		_join_code_input.text = cleaned
+		_join_code_input.caret_column = min(caret, cleaned.length())
 
 
 func _on_join_confirm_pressed() -> void:
@@ -157,12 +175,15 @@ func _on_back_to_root() -> void:
 	_room_code = ""
 	_is_host = false
 	_peers.clear()
+	_join_code_input.text = ""  # don't carry stale input back to root
 	_set_connection_status("offline")
 	_show_panel(Step.ROOT)
 
 
 func _show_error(msg: String) -> void:
 	_error_label.text = msg
+	# Clear any stale typed code so the next "Rejoindre" attempt starts blank.
+	_join_code_input.text = ""
 	_show_panel(Step.ERROR)
 
 

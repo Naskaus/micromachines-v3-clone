@@ -11,7 +11,16 @@ content_margin_right = 24.0
 content_margin_bottom = 14.0
 bg_color = Color(0, 0, 0, 0)
 border_width_bottom = 2
-border_color = Color(1, 1, 1, 0.35)
+border_color = Color(1, 1, 1, 0.30)
+
+[sub_resource type="StyleBoxFlat" id="SBF_input_focus"]
+content_margin_left = 24.0
+content_margin_top = 14.0
+content_margin_right = 24.0
+content_margin_bottom = 14.0
+bg_color = Color(0, 0, 0, 0)
+border_width_bottom = 3
+border_color = Color(1, 0.12, 0.18, 1)
 
 [node name="MultiplayerMenu" type="Control"]
 layout_mode = 3
@@ -307,18 +316,20 @@ theme_override_colors/font_color = Color(0.45, 0.45, 0.45, 1)
 theme_override_font_sizes/font_size = 12
 
 [node name="CodeInput" type="LineEdit" parent="JoinInputPanel/VBox"]
-custom_minimum_size = Vector2(0, 80)
+custom_minimum_size = Vector2(0, 92)
 layout_mode = 2
-placeholder_text = "____"
-alignment = 0
+placeholder_text = "ABCD"
+alignment = 1
 max_length = 4
+caret_blink = false
+caret_force_displayed = true
 theme_override_styles/normal = SubResource("SBF_input")
-theme_override_styles/focus = SubResource("SBF_input")
+theme_override_styles/focus = SubResource("SBF_input_focus")
 theme_override_styles/read_only = SubResource("SBF_input")
 theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_colors/font_placeholder_color = Color(0.30, 0.30, 0.30, 1)
+theme_override_colors/font_placeholder_color = Color(0.22, 0.22, 0.22, 1)
 theme_override_colors/caret_color = Color(1, 0.12, 0.18, 1)
-theme_override_font_sizes/font_size = 64
+theme_override_font_sizes/font_size = 72
 
 [node name="Sep1" type="ColorRect" parent="JoinInputPanel/VBox"]
 custom_minimum_size = Vector2(0, 1)
