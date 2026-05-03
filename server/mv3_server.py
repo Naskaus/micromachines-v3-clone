@@ -38,7 +38,10 @@ from websockets.server import WebSocketServerProtocol
 PORT = 8060
 ROOM_CODE_LEN = 4
 MAX_PLAYERS_PER_ROOM = 6
-ROOM_TTL_SECONDS = 3600  # auto-purge empty rooms after 1h
+ROOM_TTL_SECONDS = 3600         # absolute upper bound on room age (1h)
+ROOM_GRACE_SECONDS = 300        # how long an empty/host-less room sticks around
+                                # waiting for the original host to reclaim
+                                # after they tab away to share the code
 
 logging.basicConfig(
     level=logging.INFO,
@@ -112,7 +115,9 @@ async def handle(ws: WebSocketServerProtocol) -> None:
                 rooms[code] = {
                     "clients": {ws: player_id},
                     "host": ws,
+                    "host_player_id": player_id,
                     "created_at": time.time(),
+                    "abandoned_at": None,
                 }
                 current_room = code
                 await _send(ws, {
@@ -123,6 +128,38 @@ async def handle(ws: WebSocketServerProtocol) -> None:
                     "peers": [],
                 })
                 log.info(f"player {player_id} created room {code}")
+
+            elif mtype == "reclaim":
+                # Host (or any prior member) returning after tabbing away to share
+                # the code via WhatsApp etc. The room stayed alive for up to
+                # ROOM_GRACE_SECONDS waiting for them — promote them back to host
+                # if the host slot is empty.
+                code = str(msg.get("code", "")).strip()
+                if code not in rooms:
+                    await _send(ws, {"type": "error", "msg": f"Salle {code} introuvable"})
+                    continue
+                room = rooms[code]
+                if len(room["clients"]) >= MAX_PLAYERS_PER_ROOM:
+                    await _send(ws, {"type": "error", "msg": f"Salle {code} pleine"})
+                    continue
+                peers = list(room["clients"].values())
+                room["clients"][ws] = player_id
+                room["abandoned_at"] = None
+                if room.get("host") is None:
+                    room["host"] = ws
+                    room["host_player_id"] = player_id
+                is_host = room["host"] is ws
+                current_room = code
+                await _send(ws, {
+                    "type": "joined",
+                    "code": code,
+                    "is_host": is_host,
+                    "player_id": player_id,
+                    "peers": peers,
+                })
+                if peers:
+                    await _broadcast(code, {"type": "player_joined", "player_id": player_id}, exclude=ws)
+                log.info(f"player {player_id} reclaimed room {code} (is_host={is_host})")
 
             elif mtype == "join":
                 code = str(msg.get("code", "")).strip()
@@ -163,23 +200,34 @@ async def handle(ws: WebSocketServerProtocol) -> None:
         if current_room and current_room in rooms:
             rooms[current_room]["clients"].pop(ws, None)
             if not rooms[current_room]["clients"]:
-                del rooms[current_room]
-                log.info(f"room {current_room} closed (empty)")
+                # Don't delete — keep the room alive for ROOM_GRACE_SECONDS so
+                # the host can reclaim after tabbing away to WhatsApp etc.
+                rooms[current_room]["abandoned_at"] = time.time()
+                rooms[current_room]["host"] = None
+                log.info(f"room {current_room} abandoned (kept {ROOM_GRACE_SECONDS}s for reclaim)")
             else:
-                # If host left, promote next player
+                # If host left, vacate the host slot. Anyone who reclaims with
+                # the code while the slot is empty becomes the new host.
                 if rooms[current_room].get("host") is ws:
-                    new_host = next(iter(rooms[current_room]["clients"].keys()))
-                    rooms[current_room]["host"] = new_host
+                    rooms[current_room]["host"] = None
                 await _broadcast(current_room, {"type": "player_left", "player_id": player_id})
         log.info(f"player {player_id} disconnected")
 
 
 async def _purge_empty_rooms() -> None:
     while True:
-        await asyncio.sleep(300)  # every 5 min
+        await asyncio.sleep(60)  # check every 1 min
         now = time.time()
-        stale = [code for code, r in rooms.items()
-                 if not r["clients"] and (now - r.get("created_at", now) > ROOM_TTL_SECONDS)]
+        stale = []
+        for code, r in rooms.items():
+            abandoned_at = r.get("abandoned_at")
+            # 1) abandoned past the grace window → purge
+            if abandoned_at is not None and (now - abandoned_at) > ROOM_GRACE_SECONDS:
+                stale.append(code)
+                continue
+            # 2) absolute upper bound (1h) regardless of activity → purge
+            if (now - r.get("created_at", now)) > ROOM_TTL_SECONDS:
+                stale.append(code)
         for code in stale:
             rooms.pop(code, None)
         if stale:

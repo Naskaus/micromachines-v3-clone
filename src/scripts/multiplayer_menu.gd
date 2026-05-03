@@ -27,6 +27,7 @@ enum Step { ROOT, CREATE_LOBBY, JOIN_INPUT, JOIN_LOBBY, CONNECTING, ERROR }
 @onready var _create_player_count: Label = $CreateLobbyPanel/VBox/PlayerCountLabel
 @onready var _create_player_list: Label = $CreateLobbyPanel/VBox/PlayerListLabel
 @onready var _btn_copy_code: Button = $CreateLobbyPanel/VBox/HBox/BtnCopy
+@onready var _btn_share_code: Button = $CreateLobbyPanel/VBox/HBox/BtnShare
 @onready var _btn_start_race: Button = $CreateLobbyPanel/VBox/HBox/BtnStart
 @onready var _btn_create_back: Button = $CreateLobbyPanel/VBox/BtnBack
 @onready var _btn_create_navback: Button = $CreateLobbyPanel/VBox/NavBar/BtnNavBack
@@ -77,6 +78,7 @@ func _ready() -> void:
 	call_deferred("_check_orientation")
 	_animate_orientation_icon()
 	_btn_copy_code.pressed.connect(_on_copy_code)
+	_btn_share_code.pressed.connect(_on_share_code)
 	_btn_start_race.pressed.connect(_on_start_race_pressed)
 	_btn_create_back.pressed.connect(_on_back_to_root)
 	_btn_create_navback.pressed.connect(_on_back_to_root)
@@ -277,7 +279,32 @@ func _on_copy_code() -> void:
 	_btn_copy_code.text = "✓ COPIÉ"
 	get_tree().create_timer(1.4).timeout.connect(func():
 		if is_instance_valid(_btn_copy_code):
-			_btn_copy_code.text = "📋 COPIER"
+			_btn_copy_code.text = "Copier le code"
+	)
+
+
+func _on_share_code() -> void:
+	# Web Share API: opens the OS share sheet (WhatsApp, SMS, Telegram, etc.)
+	# directly from inside the browser. The user picks an app, sends the
+	# message, and the sheet closes — they never leave the tab, so the
+	# WebSocket stays alive and the room doesn't evaporate. Falls back to
+	# clipboard on browsers without Web Share or on native builds.
+	if _room_code.is_empty():
+		return
+	var text: String = "Rejoins ma course Micro Naskar V3 ! Code : %s" % _room_code
+	var url: String = "https://mv3.naskaus.com"
+	if OS.has_feature("web"):
+		var safe_text: String = text.replace("\\", "\\\\").replace("'", "\\'")
+		var js: String = ("(function(){var d={title:'Micro Naskar V3',text:'%s',url:'%s'};"
+			+ "if(navigator.share){navigator.share(d).catch(function(){});}"
+			+ "else if(navigator.clipboard){navigator.clipboard.writeText(d.text+' '+d.url);}})();") % [safe_text, url]
+		JavaScriptBridge.eval(js, true)
+	else:
+		DisplayServer.clipboard_set("%s %s" % [text, url])
+	_btn_share_code.text = "✓ PARTAGÉ"
+	get_tree().create_timer(1.6).timeout.connect(func():
+		if is_instance_valid(_btn_share_code):
+			_btn_share_code.text = "PARTAGER LE CODE"
 	)
 
 

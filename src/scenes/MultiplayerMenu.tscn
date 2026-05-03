@@ -444,10 +444,10 @@ theme_override_font_sizes/font_size = 13
 layout_mode = 2
 theme_override_constants/separation = 10
 
-[node name="BtnStart" type="Button" parent="CreateLobbyPanel/VBox/HBox"]
+[node name="BtnShare" type="Button" parent="CreateLobbyPanel/VBox/HBox"]
 custom_minimum_size = Vector2(0, 80)
 layout_mode = 2
-text = "Démarrer la course"
+text = "PARTAGER LE CODE"
 theme_override_styles/normal = SubResource("SBF_btn_primary")
 theme_override_styles/hover = SubResource("SBF_btn_primary_hover")
 theme_override_styles/pressed = SubResource("SBF_btn_primary_hover")
@@ -456,7 +456,23 @@ theme_override_colors/font_color = Color(1, 1, 1, 1)
 theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
 theme_override_colors/font_pressed_color = Color(1, 1, 1, 1)
 theme_override_colors/font_focus_color = Color(1, 1, 1, 1)
-theme_override_font_sizes/font_size = 19
+theme_override_fonts/font = ExtResource("5_font_impact")
+theme_override_font_sizes/font_size = 24
+
+[node name="BtnStart" type="Button" parent="CreateLobbyPanel/VBox/HBox"]
+custom_minimum_size = Vector2(0, 80)
+layout_mode = 2
+text = "DÉMARRER LA COURSE"
+theme_override_styles/normal = SubResource("SBF_btn_primary")
+theme_override_styles/hover = SubResource("SBF_btn_primary_hover")
+theme_override_styles/pressed = SubResource("SBF_btn_primary_hover")
+theme_override_styles/focus = SubResource("SBF_btn_primary_hover")
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_colors/font_pressed_color = Color(1, 1, 1, 1)
+theme_override_colors/font_focus_color = Color(1, 1, 1, 1)
+theme_override_fonts/font = ExtResource("5_font_impact")
+theme_override_font_sizes/font_size = 24
 
 [node name="BtnCopy" type="Button" parent="CreateLobbyPanel/VBox/HBox"]
 custom_minimum_size = Vector2(0, 60)
