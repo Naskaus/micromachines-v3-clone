@@ -26,7 +26,7 @@ const ENGINE_PITCH_IDLE := 0.55     # lower idle = softer rumble
 const ENGINE_PITCH_MAX := 1.4       # less screech at top speed
 const ENGINE_VOLUME_DB := -30.0     # very ambient — barely there
 
-const MUSIC_RACE := "res://assets/audio/time_driving.ogg"
+const MUSIC_RACE := "res://assets/audio/retro_reggae.ogg"  # Kenney Music Loops > Retro Reggae (CC0)
 const MUSIC_MENU := "res://assets/audio/mishief_stroll.ogg"
 const MUSIC_VOLUME_DB := -4.0
 

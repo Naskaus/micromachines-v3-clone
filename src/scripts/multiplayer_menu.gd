@@ -202,14 +202,15 @@ func _on_join_pressed() -> void:
 
 
 func _on_join_confirm_pressed() -> void:
-	# Sanitize on submit only (strip whitespace, uppercase, keep A-Z).
-	var raw: String = _join_code_input.text.strip_edges().to_upper()
+	# Sanitize on submit only (strip whitespace, keep 0-9).
+	# v0.18.0: 4-digit PIN (matches server) so mobile shows numeric keypad.
+	var raw: String = _join_code_input.text.strip_edges()
 	var code: String = ""
 	for c in raw:
-		if c >= "A" and c <= "Z":
+		if c >= "0" and c <= "9":
 			code += c
 	if code.length() != 4:
-		_show_error("Le code doit faire 4 lettres.")
+		_show_error("Le code doit faire 4 chiffres.")
 		return
 	_connecting_label.text = "Connexion à la salle %s…" % code
 	_show_panel(Step.CONNECTING)

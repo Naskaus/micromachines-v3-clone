@@ -329,7 +329,7 @@ mesh = SubResource("Mesh_boost_zaxis")
 surface_material_override/0 = SubResource("Mat_boost")
 
 [node name="BoostPad_TopEast" type="Area3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 100, 0.05, -50)
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, 50, 0.05, -93)
 script = ExtResource("2_boost")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="BoostPad_TopEast"]
@@ -340,7 +340,7 @@ mesh = SubResource("Mesh_boost_zaxis")
 surface_material_override/0 = SubResource("Mat_boost")
 
 [node name="BoostPad_TopWest" type="Area3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -100, 0.05, -50)
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -50, 0.05, -93)
 script = ExtResource("2_boost")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="BoostPad_TopWest"]
@@ -351,7 +351,7 @@ mesh = SubResource("Mesh_boost_zaxis")
 surface_material_override/0 = SubResource("Mat_boost")
 
 [node name="BoostPad_BotEast" type="Area3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 100, 0.05, 50)
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, 50, 0.05, 93)
 script = ExtResource("2_boost")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="BoostPad_BotEast"]
@@ -362,7 +362,7 @@ mesh = SubResource("Mesh_boost_zaxis")
 surface_material_override/0 = SubResource("Mat_boost")
 
 [node name="BoostPad_BotWest" type="Area3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -100, 0.05, 50)
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -50, 0.05, 93)
 script = ExtResource("2_boost")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="BoostPad_BotWest"]

@@ -1,9 +1,15 @@
-[gd_scene load_steps=15 format=3]
+[gd_scene load_steps=18 format=3]
 
 [ext_resource type="Script" path="res://scripts/multiplayer_menu.gd" id="1_mp"]
 [ext_resource type="Texture2D" path="res://assets/branding/logos/micronaskar_v3_logo_horizontal.png" id="2_logo"]
 [ext_resource type="Texture2D" path="res://assets/branding/backgrounds/bg_menu_main_16x9.png" id="3_bg_landscape"]
 [ext_resource type="Texture2D" path="res://assets/branding/backgrounds/bg_menu_portrait_9x16.png" id="4_bg_portrait"]
+[ext_resource type="FontFile" path="res://assets/fonts/Anton-Regular.ttf" id="5_font_impact"]
+
+[sub_resource type="LabelSettings" id="LS_btn_impact"]
+font = ExtResource("5_font_impact")
+font_size = 32
+font_color = Color(1, 1, 1, 1)
 
 [sub_resource type="StyleBoxFlat" id="SBF_card"]
 content_margin_left = 0.0
@@ -238,24 +244,24 @@ offset_right = 260.0
 offset_bottom = 300.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_constants/separation = 16
+theme_override_constants/separation = 8
 alignment = 1
 
 [node name="Logo" type="TextureRect" parent="RootPanel/VBox"]
-custom_minimum_size = Vector2(0, 240)
+custom_minimum_size = Vector2(0, 160)
 layout_mode = 2
 texture = ExtResource("2_logo")
 expand_mode = 1
 stretch_mode = 5
 
 [node name="Spacer1" type="Control" parent="RootPanel/VBox"]
-custom_minimum_size = Vector2(0, 12)
+custom_minimum_size = Vector2(0, 8)
 layout_mode = 2
 
 [node name="BtnSolo1" type="Button" parent="RootPanel/VBox"]
-custom_minimum_size = Vector2(0, 72)
+custom_minimum_size = Vector2(0, 100)
 layout_mode = 2
-text = "Solo · 1 joueur"
+text = "SOLO · 1 JOUEUR"
 theme_override_styles/normal = SubResource("SBF_btn_default")
 theme_override_styles/hover = SubResource("SBF_btn_default_hover")
 theme_override_styles/pressed = SubResource("SBF_btn_default_hover")
@@ -264,12 +270,13 @@ theme_override_colors/font_color = Color(0.95, 0.95, 0.95, 1)
 theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
 theme_override_colors/font_pressed_color = Color(1, 1, 1, 1)
 theme_override_colors/font_focus_color = Color(1, 1, 1, 1)
-theme_override_font_sizes/font_size = 18
+theme_override_fonts/font = ExtResource("5_font_impact")
+theme_override_font_sizes/font_size = 30
 
 [node name="BtnSolo2" type="Button" parent="RootPanel/VBox"]
-custom_minimum_size = Vector2(0, 72)
+custom_minimum_size = Vector2(0, 100)
 layout_mode = 2
-text = "Solo · 2 joueurs"
+text = "SOLO · 2 JOUEURS"
 theme_override_styles/normal = SubResource("SBF_btn_default")
 theme_override_styles/hover = SubResource("SBF_btn_default_hover")
 theme_override_styles/pressed = SubResource("SBF_btn_default_hover")
@@ -278,7 +285,8 @@ theme_override_colors/font_color = Color(0.95, 0.95, 0.95, 1)
 theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
 theme_override_colors/font_pressed_color = Color(1, 1, 1, 1)
 theme_override_colors/font_focus_color = Color(1, 1, 1, 1)
-theme_override_font_sizes/font_size = 18
+theme_override_fonts/font = ExtResource("5_font_impact")
+theme_override_font_sizes/font_size = 30
 
 [node name="Sep1" type="ColorRect" parent="RootPanel/VBox"]
 custom_minimum_size = Vector2(0, 1)
@@ -286,9 +294,9 @@ layout_mode = 2
 color = Color(0.165, 0.165, 0.165, 1)
 
 [node name="BtnCreate" type="Button" parent="RootPanel/VBox"]
-custom_minimum_size = Vector2(0, 80)
+custom_minimum_size = Vector2(0, 120)
 layout_mode = 2
-text = "Créer une salle"
+text = "CRÉER UNE SALLE"
 theme_override_styles/normal = SubResource("SBF_btn_primary")
 theme_override_styles/hover = SubResource("SBF_btn_primary_hover")
 theme_override_styles/pressed = SubResource("SBF_btn_primary_hover")
@@ -297,12 +305,13 @@ theme_override_colors/font_color = Color(1, 1, 1, 1)
 theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
 theme_override_colors/font_pressed_color = Color(1, 1, 1, 1)
 theme_override_colors/font_focus_color = Color(1, 1, 1, 1)
-theme_override_font_sizes/font_size = 19
+theme_override_fonts/font = ExtResource("5_font_impact")
+theme_override_font_sizes/font_size = 36
 
 [node name="BtnJoin" type="Button" parent="RootPanel/VBox"]
-custom_minimum_size = Vector2(0, 72)
+custom_minimum_size = Vector2(0, 100)
 layout_mode = 2
-text = "Rejoindre une salle"
+text = "REJOINDRE UNE SALLE"
 theme_override_styles/normal = SubResource("SBF_btn_default")
 theme_override_styles/hover = SubResource("SBF_btn_default_hover")
 theme_override_styles/pressed = SubResource("SBF_btn_default_hover")
@@ -311,7 +320,8 @@ theme_override_colors/font_color = Color(0.95, 0.95, 0.95, 1)
 theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
 theme_override_colors/font_pressed_color = Color(1, 1, 1, 1)
 theme_override_colors/font_focus_color = Color(1, 1, 1, 1)
-theme_override_font_sizes/font_size = 18
+theme_override_fonts/font = ExtResource("5_font_impact")
+theme_override_font_sizes/font_size = 30
 
 [node name="Spacer2" type="Control" parent="RootPanel/VBox"]
 custom_minimum_size = Vector2(0, 14)
@@ -556,11 +566,12 @@ theme_override_font_sizes/font_size = 11
 custom_minimum_size = Vector2(0, 120)
 layout_mode = 2
 mouse_default_cursor_shape = 1
-placeholder_text = "ABCD"
+placeholder_text = "1234"
 alignment = 1
 max_length = 4
 editable = true
 selecting_enabled = true
+virtual_keyboard_type = 2
 caret_blink = true
 caret_blink_interval = 0.6
 theme_override_styles/normal = SubResource("SBF_input")
@@ -575,7 +586,7 @@ theme_override_font_sizes/font_size = 64
 
 [node name="HintLabel" type="Label" parent="JoinInputPanel/VBox"]
 layout_mode = 2
-text = "Quatre lettres, partagées par l'hôte."
+text = "Code à 4 chiffres, partagé par l'hôte."
 horizontal_alignment = 1
 theme_override_colors/font_color = Color(0.55, 0.55, 0.55, 1)
 theme_override_font_sizes/font_size = 13

@@ -25,8 +25,9 @@ const PathUtils = preload("res://scripts/path_utils.gd")
 @export var initial_path_phase: float = 0.25  # where on the figure-8 this car starts (0.25 = top of top oval)
 
 # --- Tuning constants (BASELINE V0.3 — slow ramp + steer drag + better drift) ---
-const TOP_SPEED := 42.0          # m/s — cruise speed
-const ACCEL := 20.0              # m/s² — slow ramp, ~2s from 0 to top
+# v0.18.0: -20% top speed for a slightly more forgiving feel (Seb).
+const TOP_SPEED := 33.6          # m/s — cruise speed (was 42.0)
+const ACCEL := 16.0              # m/s² — slow ramp scaled with TOP_SPEED (was 20.0)
 const TURN_RATE := 3.4           # rad/s — yaw rate at full speed
 const TURN_RATE_LOW_SPEED := 2.0 # rad/s — yaw rate when nearly stopped (less twitchy)
 const TURN_RATE_DRIFT_BONUS := 1.20  # +20% yaw rate when drifting (car pivots more visibly)

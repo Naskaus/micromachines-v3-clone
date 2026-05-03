@@ -17,9 +17,9 @@ const PathUtils = preload("res://scripts/path_utils.gd")
 @export var car_model_y_offset: float = -0.25
 @export var initial_path_phase: float = 0.0  # where to start on the figure-8
 
-# BASELINE V0.3 physics
-const TOP_SPEED := 42.0
-const ACCEL := 20.0
+# BASELINE V0.3 physics — v0.18.0: -20% scale, matches car.gd
+const TOP_SPEED := 33.6
+const ACCEL := 16.0
 const TURN_RATE := 3.4
 const TURN_RATE_LOW_SPEED := 2.0
 const TURN_RATE_DRIFT_BONUS := 1.20

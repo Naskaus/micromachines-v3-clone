@@ -54,9 +54,11 @@ _next_player_id = 1
 
 
 def _gen_code() -> str:
-    """Generate a 4-letter room code that's not currently in use."""
+    """Generate a 4-digit room PIN that's not currently in use."""
+    # v0.18.0: switched from A-Z to 0-9 so mobile clients can request the
+    # numeric keypad (LineEdit.virtual_keyboard_type = NUMBER).
     while True:
-        code = "".join(random.choices(string.ascii_uppercase, k=ROOM_CODE_LEN))
+        code = "".join(random.choices(string.digits, k=ROOM_CODE_LEN))
         if code not in rooms:
             return code
 
@@ -123,7 +125,7 @@ async def handle(ws: WebSocketServerProtocol) -> None:
                 log.info(f"player {player_id} created room {code}")
 
             elif mtype == "join":
-                code = str(msg.get("code", "")).upper().strip()
+                code = str(msg.get("code", "")).strip()
                 if code not in rooms:
                     await _send(ws, {"type": "error", "msg": f"Room {code} not found"})
                     continue
