@@ -1,4 +1,4 @@
-[gd_scene load_steps=35 format=3]
+[gd_scene load_steps=38 format=3]
 
 [ext_resource type="Script" path="res://scripts/boost_pad.gd" id="2_boost"]
 [ext_resource type="Shader" path="res://assets/pool_felt.gdshader" id="1_felt"]
@@ -91,6 +91,19 @@ albedo_color = Color(0.70, 0.20, 1.0, 1)
 emission_enabled = true
 emission = Color(0.65, 0.0, 1.0, 1)
 emission_energy_multiplier = 1.5
+
+[sub_resource type="BoxShape3D" id="Shape_jump_ramp"]
+size = Vector3(12.0, 0.5, 10.0)
+
+[sub_resource type="BoxMesh" id="Mesh_jump_ramp"]
+size = Vector3(12.0, 0.5, 10.0)
+
+[sub_resource type="StandardMaterial3D" id="Mat_jump_ramp"]
+albedo_color = Color(1.0, 0.85, 0.10, 1)
+emission_enabled = true
+emission = Color(1.0, 0.65, 0.0, 1)
+emission_energy_multiplier = 0.6
+roughness = 0.5
 
 [sub_resource type="BoxShape3D" id="Shape_boost_zaxis"]
 size = Vector3(3.0, 1.0, 6.0)
@@ -287,6 +300,29 @@ surface_material_override/0 = SubResource("Mat_arch_purple")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4.5, 0)
 mesh = SubResource("Mesh_arch_top")
 surface_material_override/0 = SubResource("Mat_arch_purple")
+
+[node name="JumpRamp" type="StaticBody3D" parent="."]
+transform = Transform3D(-0.16036, -0.36976, -0.91519, 0.00000, 0.92718, -0.37461, 0.98706, -0.06007, -0.14868, -30.90170, 1.37303, -2.44717)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="JumpRamp"]
+shape = SubResource("Shape_jump_ramp")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="JumpRamp"]
+mesh = SubResource("Mesh_jump_ramp")
+surface_material_override/0 = SubResource("Mat_jump_ramp")
+
+[node name="BoostPad_PreJump" type="Area3D" parent="."]
+transform = Transform3D(-0.32564, 0.00000, -0.94549, 0.00000, 1.00000, 0.00000, 0.94549, 0.00000, -0.32564, -56.72689, 0.05000, -8.82337)
+script = ExtResource("2_boost")
+boost_duration = 1.5
+boost_factor = 1.25
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="BoostPad_PreJump"]
+shape = SubResource("Shape_boost_zaxis")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="BoostPad_PreJump"]
+mesh = SubResource("Mesh_boost_zaxis")
+surface_material_override/0 = SubResource("Mat_boost")
 
 [node name="BoostPad_TopEast" type="Area3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 100, 0.05, -50)
