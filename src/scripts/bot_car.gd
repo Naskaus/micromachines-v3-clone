@@ -31,8 +31,8 @@ const STEER_TOP_LOSS := 0.15
 # Off-track + path
 const TRACK_HALF_WIDTH := 6.0
 const OFF_TRACK_MALUS := 0.5
-const OFF_PATH_THRESHOLD := 4.5  # m from preferred path before magnetic pull engages
-const PATH_PULL_FORCE := 25.0   # N per meter of off-path offset
+const OFF_PATH_THRESHOLD := 7.0  # m from preferred path before magnetic pull engages
+const PATH_PULL_FORCE := 6.0    # N per meter of off-path offset (gentle nudge, not catapult)
 
 # AI tuning
 const LOOKAHEAD_PHASE := 0.012   # ~6m of path ahead per meter of advance
@@ -112,7 +112,8 @@ func _ready() -> void:
 	_base_top_speed = TOP_SPEED * skill
 	_bot_top_speed = _base_top_speed
 	_noise_phase = randf_range(0.0, TAU)
-	_path_phase = initial_path_phase
+	# Derive path phase from actual spawn position (avoids huge off-path values when grid spawns spread cars)
+	_path_phase = PathUtils.phase_from_position(global_position)
 	if player_path and not player_path.is_empty():
 		_player = get_node_or_null(player_path) as Node3D
 

@@ -303,7 +303,8 @@ func _ready() -> void:
 	axis_lock_angular_z = true
 	linear_damp = 0.5
 	angular_damp = 4.0
-	_path_phase = initial_path_phase
+	# Derive phase from spawn position (initial_path_phase is just a fallback)
+	_path_phase = PathUtils.phase_from_position(global_position)
 	if hud_label_path and not hud_label_path.is_empty():
 		_hud_label = get_node_or_null(hud_label_path) as Label
 	# Try to load a Kenney .glb model first; fall back to primitive build if missing
