@@ -15,6 +15,7 @@ const COUNTDOWN_SECONDS := 3
 const MIN_LAP_TIME := 4.0    # debounce — must be < fastest possible lap
 const ELIMINATION_DIST_FROM_LEADER := 120.0  # m — racers beyond this are eliminated
 const LEADER_CHANGE_HYSTERESIS := 0.03  # 3% lap progress buffer to avoid camera flicker
+const POST_FIRST_FINISH_TIMEOUT := 18.0  # extra seconds for stragglers (bots) after the first racer crosses the line
 
 # Figure-8 path constants live in PathUtils.gd
 
@@ -42,6 +43,7 @@ var _finish_order: Array = []
 var _eliminated: Array = []
 var _current_leader: Node = null
 var _num_players: int = 1
+var _first_finish_time: float = -1.0  # set when the first racer crosses the line
 
 var _camera: Node = null
 var _menu_label: Label
@@ -213,8 +215,12 @@ func _on_arch_entered(body: Node, arch_idx: int) -> void:
 	var data: Dictionary = _racer_data[body]
 	if data.finished or _eliminated.has(body):
 		return
-	if arch_idx != data.next_arch_index:
-		return  # out-of-order pass — ignore
+	if arch_idx < data.next_arch_index:
+		return  # already passed earlier this lap (or backwards) — ignore
+	# Forgive forward skips: a bot/player that took a wide line and clipped past
+	# arch N still gets credit, and the lap counter advances to N+1.
+	# The strict equality check used to soft-lock bots forever when their racing
+	# line offset put them outside the arch trigger area.
 	var last_arch_idx: int = arch_paths.size() - 1
 	if arch_idx == last_arch_idx:
 		var now: float = Time.get_ticks_msec() / 1000.0
@@ -236,25 +242,37 @@ func _on_arch_entered(body: Node, arch_idx: int) -> void:
 				AudioManager.play("win", 0.0, 1.0)
 			_check_race_end()
 	else:
-		data.next_arch_index = arch_idx + 1
+		data.next_arch_index = arch_idx + 1  # forward skips advance the counter past the missed arches
 		# Arch pass chime — subtle ding
 		if data.is_player and AudioManager:
 			AudioManager.play("arch_pass", -12.0, 1.3)
 
 
 func _check_race_end() -> void:
-	# Race ends when:
-	#   - All human players are done (finished or eliminated), OR
-	#   - All racers have finished
-	# Race continues as long as any human player is still in (even if all bots are out).
+	# Track when the first racer crosses the line — this starts the outro window.
+	if _first_finish_time < 0.0 and _finish_order.size() > 0:
+		_first_finish_time = Time.get_ticks_msec() / 1000.0
+
+	# Done = finished OR eliminated. End immediately if every racer is accounted for.
+	var racers_done: int = 0
+	for r in _racers:
+		if _racer_data[r].finished or _eliminated.has(r):
+			racers_done += 1
+	if racers_done >= _racers.size():
+		_end_race()
+		return
+
+	# Watchdog: once all human players are out, give bots a fixed window to wrap up.
+	# This prevents the old "race ends instantly when P1 finishes → bots all DNF" bug.
 	var all_players_done: bool = true
 	for p in _players:
 		if not _racer_data[p].finished and not _eliminated.has(p):
 			all_players_done = false
 			break
-	var all_done: bool = _finish_order.size() >= _racers.size()
-	if all_players_done or all_done:
-		_end_race()
+	if all_players_done and _first_finish_time > 0.0:
+		var now: float = Time.get_ticks_msec() / 1000.0
+		if now - _first_finish_time > POST_FIRST_FINISH_TIMEOUT:
+			_end_race()
 
 
 func _end_race() -> void:
@@ -301,6 +319,10 @@ func _process(_delta: float) -> void:
 		_update_race_hud()
 		_update_speedometer()
 		_update_arch_highlight()
+		# Tick the post-finish watchdog every frame so the race ends even when no
+		# new arch event fires after the player crosses the line.
+		if _first_finish_time > 0.0:
+			_check_race_end()
 
 
 func _update_arch_highlight() -> void:
