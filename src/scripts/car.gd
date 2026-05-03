@@ -68,6 +68,10 @@ func set_race_progress_gap(gap: float) -> void:
 	_progress_gap_to_leader = gap
 
 
+func is_frozen() -> bool:
+	return freeze
+
+
 func _catch_up_factor() -> float:
 	if _progress_gap_to_leader <= PLAYER_RUBBER_DEAD_ZONE:
 		return 1.0

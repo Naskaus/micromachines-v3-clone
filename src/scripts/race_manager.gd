@@ -30,6 +30,8 @@ enum State { MENU, PRE_RACE, COUNTDOWN, RACING, FINISHED }
 @export var race_info_label_path: NodePath
 @export var results_label_path: NodePath
 @export var speedometer_label_path: NodePath
+@export var multiplayer_menu_path: NodePath  # MultiplayerMenu scene wired here
+@export var multiplayer_manager_path: NodePath  # MultiplayerManager node
 
 var _state: State = State.MENU
 var _race_start_time: float = 0.0
@@ -47,6 +49,9 @@ var _countdown_label: Label
 var _race_info_label: Label
 var _results_label: Label
 var _speedometer_label: Label
+var _multiplayer_menu: Node = null
+var _multiplayer_manager: Node = null
+var _is_network_race: bool = false
 
 # Cached arch references for dynamic highlight (next-target glow)
 const ARCH_COLOR_NAMES: Array[String] = ["VERTE", "JAUNE", "ORANGE", "CYAN", "ROUGE", "VIOLETTE"]
@@ -109,12 +114,46 @@ func _ready() -> void:
 		_race_info_label.visible = false
 	if _countdown_label:
 		_countdown_label.visible = false
-	if _menu_label:
-		_menu_label.text = "MICROMACHINES V3 CLONE\n\n[1]  1 JOUEUR  (A/D)\n[2]  2 JOUEURS  (A/D + J/L)\n\n[BACKSPACE] reset"
-		_menu_label.visible = true
+
+	# Wire the new multiplayer menu (MultiplayerMenu.tscn)
+	if multiplayer_menu_path and not multiplayer_menu_path.is_empty():
+		_multiplayer_menu = get_node_or_null(multiplayer_menu_path)
+	if multiplayer_manager_path and not multiplayer_manager_path.is_empty():
+		_multiplayer_manager = get_node_or_null(multiplayer_manager_path)
+
+	if _multiplayer_menu:
+		# New menu drives the flow — hide legacy label
+		if _menu_label:
+			_menu_label.visible = false
+		if _multiplayer_menu.has_signal("solo_race_requested"):
+			_multiplayer_menu.solo_race_requested.connect(_on_solo_race_requested)
+		if _multiplayer_menu.has_signal("multiplayer_race_requested"):
+			_multiplayer_menu.multiplayer_race_requested.connect(_on_multiplayer_race_requested)
+	else:
+		# Fallback to legacy text menu
+		if _menu_label:
+			_menu_label.text = "MICROMACHINES V3 CLONE\n\n[1]  1 JOUEUR  (A/D)\n[2]  2 JOUEURS  (A/D + J/L)\n\n[BACKSPACE] reset"
+			_menu_label.visible = true
 	_state = State.MENU
 	if AudioManager:
 		AudioManager.play_music("menu")
+
+
+func _on_solo_race_requested(num_players: int) -> void:
+	_is_network_race = false
+	_start_with_mode(num_players)
+
+
+func _on_multiplayer_race_requested(_is_host: bool, _code: String, _peers: Array) -> void:
+	# Network race — keep only P1 as the local human, hide bots,
+	# remote players will appear as ghost cars via MultiplayerManager.
+	_is_network_race = true
+	# Strip bots from the lineup — the field is filled by remote ghosts now
+	for bp in bot_paths:
+		var b: Node = get_node_or_null(bp)
+		if b:
+			_remove_racer_from_race(b)
+	_start_with_mode(1)
 
 
 func _register_racer(racer: Node, display_name: String, is_player: bool) -> void:
@@ -324,6 +363,10 @@ func _input(event: InputEvent) -> void:
 	# Touch (mobile/web): tap the screen to start solo mode from menu, or restart from results
 	if event is InputEventScreenTouch and event.pressed:
 		if _state == State.MENU:
+			# When the multiplayer menu is up, buttons handle taps directly — don't auto-launch solo
+			var mp_visible: bool = _multiplayer_menu != null and _multiplayer_menu.visible
+			if mp_visible:
+				return
 			_start_with_mode(1)
 			return
 		if _state == State.FINISHED:
@@ -335,8 +378,11 @@ func _input(event: InputEvent) -> void:
 	if event.keycode == KEY_BACKSPACE:
 		get_tree().reload_current_scene()
 		return
-	# MENU: 1 or 2 to pick player count
+	# MENU: 1 or 2 to pick player count (legacy fallback when no multiplayer menu visible)
 	if _state == State.MENU:
+		var mp_visible: bool = _multiplayer_menu != null and _multiplayer_menu.visible
+		if mp_visible:
+			return  # multiplayer menu drives the flow via buttons
 		if event.keycode == KEY_1:
 			_start_with_mode(1)
 		elif event.keycode == KEY_2:

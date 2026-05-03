@@ -1,4 +1,4 @@
-[gd_scene load_steps=11 format=3]
+[gd_scene load_steps=12 format=3]
 
 [ext_resource type="PackedScene" path="res://scenes/Track01.tscn" id="1_track"]
 [ext_resource type="PackedScene" path="res://scenes/Car.tscn" id="2_car"]
@@ -9,6 +9,8 @@
 [ext_resource type="Script" path="res://scripts/fullscreen_button.gd" id="7_fs"]
 [ext_resource type="Script" path="res://scripts/leaderboard.gd" id="8_lb"]
 [ext_resource type="Script" path="res://scripts/mute_button.gd" id="9_mute"]
+[ext_resource type="PackedScene" path="res://scenes/MultiplayerMenu.tscn" id="10_mpmenu"]
+[ext_resource type="Script" path="res://scripts/multiplayer_manager.gd" id="11_mpmgr"]
 
 [sub_resource type="Environment" id="Env_default"]
 background_mode = 1
@@ -237,6 +239,13 @@ offset_bottom = 400.0
 mouse_filter = 2
 script = ExtResource("8_lb")
 
+[node name="MultiplayerMenu" parent="HUD" instance=ExtResource("10_mpmenu")]
+
+[node name="MultiplayerManager" type="Node" parent="."]
+script = ExtResource("11_mpmgr")
+local_player_path = NodePath("../P1_Red")
+ghost_parent_path = NodePath("..")
+
 [node name="RaceManager" type="Node" parent="."]
 script = ExtResource("5_race")
 player_paths = [NodePath("../P1_Red"), NodePath("../P2_Cyan")]
@@ -248,3 +257,5 @@ countdown_label_path = NodePath("../HUD/CountdownLabel")
 race_info_label_path = NodePath("../HUD/RaceInfoLabel")
 results_label_path = NodePath("../HUD/ResultsLabel")
 speedometer_label_path = NodePath("../HUD/SpeedometerLabel")
+multiplayer_menu_path = NodePath("../HUD/MultiplayerMenu")
+multiplayer_manager_path = NodePath("../MultiplayerManager")

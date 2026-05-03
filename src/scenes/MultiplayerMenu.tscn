@@ -1,0 +1,427 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/multiplayer_menu.gd" id="1_mp"]
+
+[node name="MultiplayerMenu" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+script = ExtResource("1_mp")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.04, 0.05, 0.10, 0.92)
+mouse_filter = 1
+
+[node name="TitleLabel" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -560.0
+offset_top = 30.0
+offset_right = 560.0
+offset_bottom = 130.0
+grow_horizontal = 2
+text = "MICROMACHINES V3"
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_colors/font_color = Color(0.95, 0.30, 0.85, 1)
+theme_override_colors/font_outline_color = Color(0.10, 0.05, 0.20, 1)
+theme_override_constants/outline_size = 16
+theme_override_font_sizes/font_size = 80
+
+[node name="SubtitleLabel" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -400.0
+offset_top = 120.0
+offset_right = 400.0
+offset_bottom = 162.0
+grow_horizontal = 2
+text = "› ARCADE RACING ‹  ›  MULTIJOUEUR ONLINE  ‹"
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_colors/font_color = Color(0.30, 0.95, 0.95, 1)
+theme_override_colors/font_outline_color = Color(0.05, 0.10, 0.15, 1)
+theme_override_constants/outline_size = 8
+theme_override_font_sizes/font_size = 26
+
+[node name="ConnectionStatus" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -260.0
+offset_top = 16.0
+offset_right = -16.0
+offset_bottom = 50.0
+grow_horizontal = 0
+text = "● OFFLINE"
+horizontal_alignment = 2
+vertical_alignment = 1
+theme_override_colors/font_color = Color(0.7, 0.2, 0.4, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 18
+
+[node name="RootPanel" type="Panel" parent="."]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -280.0
+offset_top = -150.0
+offset_right = 280.0
+offset_bottom = 250.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBox" type="VBoxContainer" parent="RootPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 30.0
+offset_top = 30.0
+offset_right = -30.0
+offset_bottom = -30.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 16
+
+[node name="ModeLabel" type="Label" parent="RootPanel/VBox"]
+layout_mode = 2
+text = "CHOISIS TON MODE"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 24
+
+[node name="BtnSolo1" type="Button" parent="RootPanel/VBox"]
+custom_minimum_size = Vector2(0, 56)
+layout_mode = 2
+text = "🏎  SOLO — 1 JOUEUR (A/D)"
+theme_override_font_sizes/font_size = 22
+
+[node name="BtnSolo2" type="Button" parent="RootPanel/VBox"]
+custom_minimum_size = Vector2(0, 56)
+layout_mode = 2
+text = "🏎  SOLO — 2 JOUEURS (A/D + J/L)"
+theme_override_font_sizes/font_size = 22
+
+[node name="Sep1" type="HSeparator" parent="RootPanel/VBox"]
+layout_mode = 2
+
+[node name="BtnCreate" type="Button" parent="RootPanel/VBox"]
+custom_minimum_size = Vector2(0, 64)
+layout_mode = 2
+text = "🌐  CRÉER UNE SALLE"
+theme_override_font_sizes/font_size = 24
+theme_override_colors/font_color = Color(0.95, 0.30, 0.85, 1)
+
+[node name="BtnJoin" type="Button" parent="RootPanel/VBox"]
+custom_minimum_size = Vector2(0, 64)
+layout_mode = 2
+text = "🔗  REJOINDRE AVEC UN CODE"
+theme_override_font_sizes/font_size = 24
+theme_override_colors/font_color = Color(0.30, 0.95, 0.95, 1)
+
+[node name="CreateLobbyPanel" type="Panel" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -340.0
+offset_top = -200.0
+offset_right = 340.0
+offset_bottom = 240.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBox" type="VBoxContainer" parent="CreateLobbyPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 30.0
+offset_top = 22.0
+offset_right = -30.0
+offset_bottom = -22.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 14
+
+[node name="HeaderLabel" type="Label" parent="CreateLobbyPanel/VBox"]
+layout_mode = 2
+text = "TON CODE DE SALLE"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.30, 0.95, 0.95, 1)
+theme_override_font_sizes/font_size = 22
+
+[node name="CodeLabel" type="Label" parent="CreateLobbyPanel/VBox"]
+custom_minimum_size = Vector2(0, 100)
+layout_mode = 2
+text = "ABCD"
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_colors/font_color = Color(0.95, 0.30, 0.85, 1)
+theme_override_colors/font_outline_color = Color(0.10, 0.0, 0.15, 1)
+theme_override_constants/outline_size = 12
+theme_override_font_sizes/font_size = 96
+
+[node name="PlayerCountLabel" type="Label" parent="CreateLobbyPanel/VBox"]
+layout_mode = 2
+text = "1 / 6 JOUEURS"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 20
+
+[node name="PlayerListLabel" type="Label" parent="CreateLobbyPanel/VBox"]
+custom_minimum_size = Vector2(0, 90)
+layout_mode = 2
+text = "▸ TOI (HÔTE)"
+horizontal_alignment = 1
+vertical_alignment = 0
+theme_override_colors/font_color = Color(0.85, 0.95, 1.0, 1)
+theme_override_font_sizes/font_size = 18
+
+[node name="HBox" type="HBoxContainer" parent="CreateLobbyPanel/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="BtnCopy" type="Button" parent="CreateLobbyPanel/VBox/HBox"]
+custom_minimum_size = Vector2(220, 56)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "📋 COPIER"
+theme_override_font_sizes/font_size = 20
+
+[node name="BtnStart" type="Button" parent="CreateLobbyPanel/VBox/HBox"]
+custom_minimum_size = Vector2(360, 56)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "▶ DÉMARRER LA COURSE"
+theme_override_font_sizes/font_size = 22
+theme_override_colors/font_color = Color(0.50, 1.00, 0.30, 1)
+
+[node name="BtnBack" type="Button" parent="CreateLobbyPanel/VBox"]
+custom_minimum_size = Vector2(0, 38)
+layout_mode = 2
+text = "← QUITTER LA SALLE"
+theme_override_font_sizes/font_size = 16
+
+[node name="JoinInputPanel" type="Panel" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -300.0
+offset_top = -160.0
+offset_right = 300.0
+offset_bottom = 100.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBox" type="VBoxContainer" parent="JoinInputPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 30.0
+offset_top = 28.0
+offset_right = -30.0
+offset_bottom = -28.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 16
+
+[node name="HeaderLabel" type="Label" parent="JoinInputPanel/VBox"]
+layout_mode = 2
+text = "ENTRE LE CODE DE LA SALLE"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.30, 0.95, 0.95, 1)
+theme_override_font_sizes/font_size = 22
+
+[node name="CodeInput" type="LineEdit" parent="JoinInputPanel/VBox"]
+custom_minimum_size = Vector2(0, 70)
+layout_mode = 2
+placeholder_text = "ABCD"
+alignment = 1
+max_length = 4
+theme_override_colors/font_color = Color(0.95, 0.95, 0.95, 1)
+theme_override_font_sizes/font_size = 56
+
+[node name="HBox" type="HBoxContainer" parent="JoinInputPanel/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="BtnConfirm" type="Button" parent="JoinInputPanel/VBox/HBox"]
+custom_minimum_size = Vector2(0, 56)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "✓ REJOINDRE"
+theme_override_font_sizes/font_size = 22
+theme_override_colors/font_color = Color(0.50, 1.00, 0.30, 1)
+
+[node name="BtnBack" type="Button" parent="JoinInputPanel/VBox/HBox"]
+custom_minimum_size = Vector2(160, 56)
+layout_mode = 2
+text = "← RETOUR"
+theme_override_font_sizes/font_size = 18
+
+[node name="JoinLobbyPanel" type="Panel" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -340.0
+offset_top = -180.0
+offset_right = 340.0
+offset_bottom = 180.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBox" type="VBoxContainer" parent="JoinLobbyPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 30.0
+offset_top = 28.0
+offset_right = -30.0
+offset_bottom = -28.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 14
+
+[node name="HeaderLabel" type="Label" parent="JoinLobbyPanel/VBox"]
+layout_mode = 2
+text = "CONNECTÉ À LA SALLE"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.30, 0.95, 0.95, 1)
+theme_override_font_sizes/font_size = 22
+
+[node name="CodeLabel" type="Label" parent="JoinLobbyPanel/VBox"]
+custom_minimum_size = Vector2(0, 100)
+layout_mode = 2
+text = "ABCD"
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_colors/font_color = Color(0.95, 0.30, 0.85, 1)
+theme_override_colors/font_outline_color = Color(0.10, 0.0, 0.15, 1)
+theme_override_constants/outline_size = 12
+theme_override_font_sizes/font_size = 96
+
+[node name="PlayerCountLabel" type="Label" parent="JoinLobbyPanel/VBox"]
+layout_mode = 2
+text = "2 / 6 JOUEURS"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 20
+
+[node name="StatusLabel" type="Label" parent="JoinLobbyPanel/VBox"]
+layout_mode = 2
+text = "EN ATTENTE DE L'HÔTE…"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(1.0, 0.85, 0.2, 1)
+theme_override_font_sizes/font_size = 22
+
+[node name="BtnLeave" type="Button" parent="JoinLobbyPanel/VBox"]
+custom_minimum_size = Vector2(0, 42)
+layout_mode = 2
+text = "← QUITTER LA SALLE"
+theme_override_font_sizes/font_size = 18
+
+[node name="ConnectingPanel" type="Panel" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -240.0
+offset_top = -60.0
+offset_right = 240.0
+offset_bottom = 60.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Label" type="Label" parent="ConnectingPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "Connexion…"
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_colors/font_color = Color(0.30, 0.95, 0.95, 1)
+theme_override_font_sizes/font_size = 24
+
+[node name="ErrorPanel" type="Panel" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -300.0
+offset_top = -100.0
+offset_right = 300.0
+offset_bottom = 100.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBox" type="VBoxContainer" parent="ErrorPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 30.0
+offset_top = 24.0
+offset_right = -30.0
+offset_bottom = -24.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 14
+
+[node name="Label" type="Label" parent="ErrorPanel/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+text = "Erreur"
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 3
+theme_override_colors/font_color = Color(1.0, 0.45, 0.45, 1)
+theme_override_font_sizes/font_size = 22
+
+[node name="BtnBack" type="Button" parent="ErrorPanel/VBox"]
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+text = "← RETOUR"
+theme_override_font_sizes/font_size = 18
