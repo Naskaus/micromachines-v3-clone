@@ -126,6 +126,13 @@ func _make_boost_emitter(local_offset: Vector3) -> CPUParticles3D:
 func apply_boost(duration: float, factor: float) -> void:
 	_boost_until = Time.get_ticks_msec() / 1000.0 + duration
 	_boost_factor = factor
+	# Snap forward velocity to target instantly — same violent kick as player
+	var fwd: Vector3 = -transform.basis.z
+	var fwd_speed: float = linear_velocity.dot(fwd)
+	var target: float = _bot_top_speed * factor
+	if fwd_speed < target:
+		var lateral: Vector3 = linear_velocity - fwd * fwd_speed
+		linear_velocity = fwd * target + lateral
 
 
 func _effective_top_speed() -> float:
