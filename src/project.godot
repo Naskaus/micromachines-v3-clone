@@ -25,6 +25,7 @@ config/icon="res://icon.svg"
 AudioManager="*res://scripts/audio_manager.gd"
 TouchInput="*res://scripts/touch_input.gd"
 CircuitLoader="*res://scripts/circuit_loader.gd"
+NetworkClient="*res://scripts/network_client.gd"
 
 [display]
 
