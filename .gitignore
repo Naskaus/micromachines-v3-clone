@@ -8,3 +8,4 @@
 
 # Original Kenney archives (we keep flat copies in src/assets/cars and src/assets/track_pieces)
 src/assets/kenney/
+web_export/

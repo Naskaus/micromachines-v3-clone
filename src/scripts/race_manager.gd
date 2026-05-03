@@ -319,6 +319,14 @@ func _feed_progress_gaps_to_players() -> void:
 
 
 func _input(event: InputEvent) -> void:
+	# Touch (mobile/web): tap the screen to start solo mode from menu, or restart from results
+	if event is InputEventScreenTouch and event.pressed:
+		if _state == State.MENU:
+			_start_with_mode(1)
+			return
+		if _state == State.FINISHED:
+			get_tree().reload_current_scene()
+			return
 	if not (event is InputEventKey and event.pressed and not event.echo):
 		return
 	# BACKSPACE restarts at ANY time (returns to menu)
