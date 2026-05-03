@@ -61,6 +61,7 @@ const HIGHLIGHT_EMISSION := 4.0  # multiplier on the next arch
 const NORMAL_EMISSION := 1.5     # baseline
 var _arch_nodes: Array[Area3D] = []
 var _arch_meshes: Array = []  # array of arrays — _arch_meshes[i] = [PillarLeft, PillarRight, Crossbar]
+var _arch_phases: Array[float] = []  # path_phase at each arch's center, computed at _ready
 var _last_highlighted_idx: int = -1
 
 
@@ -90,6 +91,10 @@ func _ready() -> void:
 		if arch:
 			arch.body_entered.connect(_on_arch_entered.bind(i))
 			_arch_nodes.append(arch)
+			# Cache the arch's path_phase. This is what the phase-based fallback
+			# uses to credit a missed arch when the racer was boost-ejected over
+			# it without triggering the physical Area3D.
+			_arch_phases.append(PathUtils.phase_from_position(arch.global_position))
 			var meshes: Array = []
 			for child_name in ["PillarLeft", "PillarRight", "Crossbar"]:
 				var m: MeshInstance3D = arch.get_node_or_null(child_name) as MeshInstance3D
@@ -215,12 +220,12 @@ func _on_arch_entered(body: Node, arch_idx: int) -> void:
 	var data: Dictionary = _racer_data[body]
 	if data.finished or _eliminated.has(body):
 		return
-	if arch_idx < data.next_arch_index:
-		return  # already passed earlier this lap (or backwards) — ignore
-	# Forgive forward skips: a bot/player that took a wide line and clipped past
-	# arch N still gets credit, and the lap counter advances to N+1.
-	# The strict equality check used to soft-lock bots forever when their racing
-	# line offset put them outside the arch trigger area.
+	if arch_idx != data.next_arch_index:
+		return  # strict order — physical out-of-order hits are rejected.
+		# Skipped arches are caught up by the phase-based detection in _process
+		# (see _check_phase_passes), which credits them when the racer's actual
+		# path_phase passes the arch's phase. This makes "boosted-over an arch"
+		# legitimate progression while still rejecting cross-track shortcuts.
 	var last_arch_idx: int = arch_paths.size() - 1
 	if arch_idx == last_arch_idx:
 		var now: float = Time.get_ticks_msec() / 1000.0
@@ -319,10 +324,56 @@ func _process(_delta: float) -> void:
 		_update_race_hud()
 		_update_speedometer()
 		_update_arch_highlight()
+		_check_phase_passes()
 		# Tick the post-finish watchdog every frame so the race ends even when no
 		# new arch event fires after the player crosses the line.
 		if _first_finish_time > 0.0:
 			_check_race_end()
+
+
+func _check_phase_passes() -> void:
+	# Per-frame fallback for arch credit. A racer can legitimately miss an
+	# arch's Area3D — boost ejects them off the ground, a wide drift line, an
+	# arch with a too-narrow trigger volume. Each frame, if the racer's actual
+	# position on the figure-8 (_path_phase) has just crossed where their next
+	# arch is supposed to be, we credit it as if they'd hit the trigger.
+	#
+	# This is what stops bots from looping forever after missing one gate, and
+	# is also the reason _on_arch_entered can stay strict (no forward-skip
+	# kludge that turned bots into false leaders and eliminated everyone else).
+	if _arch_phases.is_empty():
+		return
+	# Cap iterations so a runaway frame can't multi-credit and warp progress.
+	var max_passes_per_racer: int = 3
+	for racer in _racers:
+		if not _racer_data.has(racer):
+			continue
+		var data: Dictionary = _racer_data[racer]
+		if data.finished or _eliminated.has(racer):
+			continue
+		if not "_path_phase" in racer:
+			continue
+		var passes: int = 0
+		while passes < max_passes_per_racer:
+			var next_idx: int = data.next_arch_index
+			if next_idx < 0 or next_idx >= _arch_phases.size():
+				break
+			var arch_phase: float = _arch_phases[next_idx]
+			var racer_phase: float = racer._path_phase
+			# Wraparound-aware "racer is forward of arch" delta in [-0.5, 0.5].
+			var delta: float = wrapf(racer_phase - arch_phase, -0.5, 0.5)
+			# Credit window: racer is past the arch by 0..0.30 of a lap.
+			# 0.30 covers the worst-case boost-ejection over multiple gates.
+			# Less than 0.30 forward = not past yet, ignore.
+			# More than 0.30 = wrapped most of the way around, ignore.
+			if delta <= 0.0 or delta > 0.30:
+				break
+			_on_arch_entered(racer, next_idx)
+			# If next_arch_index didn't advance, _on_arch_entered rejected (e.g.
+			# racing-state guard) — bail to avoid an infinite loop.
+			if data.next_arch_index == next_idx:
+				break
+			passes += 1
 
 
 func _update_arch_highlight() -> void:

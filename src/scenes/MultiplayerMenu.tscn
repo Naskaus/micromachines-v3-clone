@@ -1,143 +1,146 @@
-[gd_scene load_steps=12 format=3]
+[gd_scene load_steps=15 format=3]
 
 [ext_resource type="Script" path="res://scripts/multiplayer_menu.gd" id="1_mp"]
+[ext_resource type="Texture2D" path="res://assets/branding/logos/micronaskar_v3_logo_horizontal.png" id="2_logo"]
+[ext_resource type="Texture2D" path="res://assets/branding/backgrounds/bg_menu_main_16x9.png" id="3_bg_landscape"]
+[ext_resource type="Texture2D" path="res://assets/branding/backgrounds/bg_menu_portrait_9x16.png" id="4_bg_portrait"]
 
 [sub_resource type="StyleBoxFlat" id="SBF_card"]
 content_margin_left = 0.0
 content_margin_top = 0.0
 content_margin_right = 0.0
 content_margin_bottom = 0.0
-bg_color = Color(1, 1, 1, 1)
+bg_color = Color(0.078, 0.078, 0.078, 1)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
-border_color = Color(0.870, 0.855, 0.815, 1)
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
-shadow_color = Color(0, 0, 0, 0.06)
+border_color = Color(0.165, 0.165, 0.165, 1)
+corner_radius_top_left = 14
+corner_radius_top_right = 14
+corner_radius_bottom_right = 14
+corner_radius_bottom_left = 14
+shadow_color = Color(0, 0, 0, 0.45)
 shadow_size = 24
 shadow_offset = Vector2(0, 8)
 
-[sub_resource type="StyleBoxFlat" id="SBF_input"]
-content_margin_left = 28.0
-content_margin_top = 24.0
-content_margin_right = 28.0
-content_margin_bottom = 24.0
-bg_color = Color(0.965, 0.953, 0.926, 1)
+[sub_resource type="StyleBoxFlat" id="SBF_btn_default"]
+content_margin_left = 24.0
+content_margin_top = 22.0
+content_margin_right = 24.0
+content_margin_bottom = 22.0
+bg_color = Color(0.086, 0.086, 0.086, 1)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
-border_color = Color(0.840, 0.823, 0.785, 1)
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
+border_color = Color(0.165, 0.165, 0.165, 1)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
 
-[sub_resource type="StyleBoxFlat" id="SBF_input_focus"]
-content_margin_left = 28.0
-content_margin_top = 24.0
-content_margin_right = 28.0
-content_margin_bottom = 24.0
-bg_color = Color(1, 1, 1, 1)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.102, 0.090, 0.078, 1)
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
+[sub_resource type="StyleBoxFlat" id="SBF_btn_default_hover"]
+content_margin_left = 24.0
+content_margin_top = 22.0
+content_margin_right = 24.0
+content_margin_bottom = 22.0
+bg_color = Color(0.118, 0.118, 0.118, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.880, 0.024, 0.000, 1)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
 
 [sub_resource type="StyleBoxFlat" id="SBF_btn_primary"]
 content_margin_left = 24.0
-content_margin_top = 18.0
+content_margin_top = 22.0
 content_margin_right = 24.0
-content_margin_bottom = 18.0
-bg_color = Color(0.102, 0.090, 0.078, 1)
-corner_radius_top_left = 10
-corner_radius_top_right = 10
-corner_radius_bottom_right = 10
-corner_radius_bottom_left = 10
+content_margin_bottom = 22.0
+bg_color = Color(0.880, 0.024, 0.000, 1)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
 
 [sub_resource type="StyleBoxFlat" id="SBF_btn_primary_hover"]
 content_margin_left = 24.0
-content_margin_top = 18.0
+content_margin_top = 22.0
 content_margin_right = 24.0
-content_margin_bottom = 18.0
-bg_color = Color(0.025, 0.020, 0.016, 1)
-corner_radius_top_left = 10
-corner_radius_top_right = 10
-corner_radius_bottom_right = 10
-corner_radius_bottom_left = 10
+content_margin_bottom = 22.0
+bg_color = Color(1.0, 0.102, 0.055, 1)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
 
 [sub_resource type="StyleBoxFlat" id="SBF_btn_nav"]
-content_margin_left = 16.0
-content_margin_top = 10.0
-content_margin_right = 16.0
-content_margin_bottom = 10.0
-bg_color = Color(0.957, 0.945, 0.918, 1)
+content_margin_left = 18.0
+content_margin_top = 12.0
+content_margin_right = 18.0
+content_margin_bottom = 12.0
+bg_color = Color(0.086, 0.086, 0.086, 1)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
-border_color = Color(0.870, 0.855, 0.815, 1)
+border_color = Color(0.165, 0.165, 0.165, 1)
 corner_radius_top_left = 8
 corner_radius_top_right = 8
 corner_radius_bottom_right = 8
 corner_radius_bottom_left = 8
 
 [sub_resource type="StyleBoxFlat" id="SBF_btn_nav_hover"]
-content_margin_left = 16.0
-content_margin_top = 10.0
-content_margin_right = 16.0
-content_margin_bottom = 10.0
-bg_color = Color(0.910, 0.895, 0.860, 1)
+content_margin_left = 18.0
+content_margin_top = 12.0
+content_margin_right = 18.0
+content_margin_bottom = 12.0
+bg_color = Color(0.118, 0.118, 0.118, 1)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
-border_color = Color(0.102, 0.090, 0.078, 1)
+border_color = Color(0.880, 0.024, 0.000, 1)
 corner_radius_top_left = 8
 corner_radius_top_right = 8
 corner_radius_bottom_right = 8
 corner_radius_bottom_left = 8
 
-[sub_resource type="StyleBoxFlat" id="SBF_row"]
-content_margin_left = 24.0
-content_margin_top = 22.0
-content_margin_right = 24.0
-content_margin_bottom = 22.0
-bg_color = Color(0.957, 0.945, 0.918, 1)
+[sub_resource type="StyleBoxFlat" id="SBF_input"]
+content_margin_left = 28.0
+content_margin_top = 26.0
+content_margin_right = 28.0
+content_margin_bottom = 26.0
+bg_color = Color(0.055, 0.055, 0.055, 1)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
-border_color = Color(0.870, 0.855, 0.815, 1)
-corner_radius_top_left = 12
-corner_radius_top_right = 12
-corner_radius_bottom_right = 12
-corner_radius_bottom_left = 12
+border_color = Color(0.196, 0.196, 0.196, 1)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
 
-[sub_resource type="StyleBoxFlat" id="SBF_row_hover"]
-content_margin_left = 24.0
-content_margin_top = 22.0
-content_margin_right = 24.0
-content_margin_bottom = 22.0
-bg_color = Color(1, 1, 1, 1)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.102, 0.090, 0.078, 1)
-corner_radius_top_left = 12
-corner_radius_top_right = 12
-corner_radius_bottom_right = 12
-corner_radius_bottom_left = 12
+[sub_resource type="StyleBoxFlat" id="SBF_input_focus"]
+content_margin_left = 28.0
+content_margin_top = 26.0
+content_margin_right = 28.0
+content_margin_bottom = 26.0
+bg_color = Color(0.094, 0.094, 0.094, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.880, 0.024, 0.000, 1)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
 
 [sub_resource type="StyleBoxEmpty" id="SBE_text"]
 
@@ -158,28 +161,31 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0.957, 0.945, 0.918, 1)
+color = Color(0.039, 0.039, 0.039, 1)
 mouse_filter = 1
 
-[node name="HeaderTitle" type="Label" parent="."]
-layout_mode = 0
-offset_left = 48.0
-offset_top = 36.0
-offset_right = 200.0
-offset_bottom = 76.0
-text = "M3"
-theme_override_colors/font_color = Color(0.102, 0.090, 0.078, 1)
-theme_override_font_sizes/font_size = 28
+[node name="BackgroundImage" type="TextureRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("3_bg_landscape")
+expand_mode = 1
+stretch_mode = 6
+modulate = Color(0.62, 0.62, 0.62, 1)
 
-[node name="HeaderSubtitle" type="Label" parent="."]
-layout_mode = 0
-offset_left = 48.0
-offset_top = 78.0
-offset_right = 700.0
-offset_bottom = 100.0
-text = "Micromachines V3 — Multijoueur"
-theme_override_colors/font_color = Color(0.360, 0.345, 0.320, 1)
-theme_override_font_sizes/font_size = 13
+[node name="BackgroundDim" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0, 0, 0, 0.55)
 
 [node name="ConnectionStatus" type="Label" parent="."]
 layout_mode = 0
@@ -187,30 +193,39 @@ anchors_preset = 1
 anchor_left = 1.0
 anchor_right = 1.0
 offset_left = -300.0
-offset_top = 48.0
-offset_right = -48.0
-offset_bottom = 74.0
+offset_top = 32.0
+offset_right = -32.0
+offset_bottom = 56.0
 grow_horizontal = 0
 text = "○  Hors ligne"
 horizontal_alignment = 2
-theme_override_colors/font_color = Color(0.495, 0.475, 0.443, 1)
+theme_override_colors/font_color = Color(0.55, 0.55, 0.55, 1)
 theme_override_font_sizes/font_size = 13
 
 [node name="FooterHint" type="Label" parent="."]
+visible = false
 layout_mode = 0
 anchors_preset = 2
 anchor_top = 1.0
 anchor_bottom = 1.0
-offset_left = 48.0
-offset_top = -48.0
-offset_right = 800.0
-offset_bottom = -24.0
+offset_left = 32.0
+offset_top = -36.0
+offset_right = 600.0
+offset_bottom = -16.0
 grow_vertical = 0
-text = "Tap pour sélectionner    Esc pour revenir au menu"
-theme_override_colors/font_color = Color(0.595, 0.575, 0.540, 1)
-theme_override_font_sizes/font_size = 12
+text = ""
+theme_override_colors/font_color = Color(0.40, 0.40, 0.40, 1)
+theme_override_font_sizes/font_size = 11
 
-[node name="RootPanel" type="Panel" parent="."]
+[node name="RootPanel" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBox" type="VBoxContainer" parent="RootPanel"]
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
@@ -218,120 +233,104 @@ anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
 offset_left = -260.0
-offset_top = -240.0
+offset_top = -300.0
 offset_right = 260.0
-offset_bottom = 240.0
+offset_bottom = 300.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_styles/panel = SubResource("SBF_card")
+theme_override_constants/separation = 16
+alignment = 1
 
-[node name="VBox" type="VBoxContainer" parent="RootPanel"]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = 32.0
-offset_top = 36.0
-offset_right = -32.0
-offset_bottom = -36.0
-grow_horizontal = 2
-grow_vertical = 2
-theme_override_constants/separation = 12
-
-[node name="ModeLabel" type="Label" parent="RootPanel/VBox"]
+[node name="Logo" type="TextureRect" parent="RootPanel/VBox"]
+custom_minimum_size = Vector2(0, 240)
 layout_mode = 2
-text = "CHOISIR UN MODE"
-theme_override_colors/font_color = Color(0.495, 0.475, 0.443, 1)
-theme_override_font_sizes/font_size = 11
+texture = ExtResource("2_logo")
+expand_mode = 1
+stretch_mode = 5
 
 [node name="Spacer1" type="Control" parent="RootPanel/VBox"]
-custom_minimum_size = Vector2(0, 4)
+custom_minimum_size = Vector2(0, 12)
 layout_mode = 2
 
 [node name="BtnSolo1" type="Button" parent="RootPanel/VBox"]
-custom_minimum_size = Vector2(0, 64)
+custom_minimum_size = Vector2(0, 72)
 layout_mode = 2
 text = "Solo · 1 joueur"
-alignment = 0
-theme_override_styles/normal = SubResource("SBF_row")
-theme_override_styles/hover = SubResource("SBF_row_hover")
-theme_override_styles/pressed = SubResource("SBF_row_hover")
-theme_override_styles/focus = SubResource("SBF_row_hover")
-theme_override_colors/font_color = Color(0.165, 0.150, 0.130, 1)
-theme_override_colors/font_hover_color = Color(0.102, 0.090, 0.078, 1)
-theme_override_colors/font_pressed_color = Color(0.102, 0.090, 0.078, 1)
-theme_override_colors/font_focus_color = Color(0.165, 0.150, 0.130, 1)
+theme_override_styles/normal = SubResource("SBF_btn_default")
+theme_override_styles/hover = SubResource("SBF_btn_default_hover")
+theme_override_styles/pressed = SubResource("SBF_btn_default_hover")
+theme_override_styles/focus = SubResource("SBF_btn_default_hover")
+theme_override_colors/font_color = Color(0.95, 0.95, 0.95, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_colors/font_pressed_color = Color(1, 1, 1, 1)
+theme_override_colors/font_focus_color = Color(1, 1, 1, 1)
 theme_override_font_sizes/font_size = 18
 
 [node name="BtnSolo2" type="Button" parent="RootPanel/VBox"]
-custom_minimum_size = Vector2(0, 64)
+custom_minimum_size = Vector2(0, 72)
 layout_mode = 2
 text = "Solo · 2 joueurs"
-alignment = 0
-theme_override_styles/normal = SubResource("SBF_row")
-theme_override_styles/hover = SubResource("SBF_row_hover")
-theme_override_styles/pressed = SubResource("SBF_row_hover")
-theme_override_styles/focus = SubResource("SBF_row_hover")
-theme_override_colors/font_color = Color(0.165, 0.150, 0.130, 1)
-theme_override_colors/font_hover_color = Color(0.102, 0.090, 0.078, 1)
-theme_override_colors/font_pressed_color = Color(0.102, 0.090, 0.078, 1)
-theme_override_colors/font_focus_color = Color(0.165, 0.150, 0.130, 1)
+theme_override_styles/normal = SubResource("SBF_btn_default")
+theme_override_styles/hover = SubResource("SBF_btn_default_hover")
+theme_override_styles/pressed = SubResource("SBF_btn_default_hover")
+theme_override_styles/focus = SubResource("SBF_btn_default_hover")
+theme_override_colors/font_color = Color(0.95, 0.95, 0.95, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_colors/font_pressed_color = Color(1, 1, 1, 1)
+theme_override_colors/font_focus_color = Color(1, 1, 1, 1)
 theme_override_font_sizes/font_size = 18
 
 [node name="Sep1" type="ColorRect" parent="RootPanel/VBox"]
 custom_minimum_size = Vector2(0, 1)
 layout_mode = 2
-color = Color(0.870, 0.855, 0.815, 1)
+color = Color(0.165, 0.165, 0.165, 1)
 
 [node name="BtnCreate" type="Button" parent="RootPanel/VBox"]
-custom_minimum_size = Vector2(0, 64)
+custom_minimum_size = Vector2(0, 80)
 layout_mode = 2
 text = "Créer une salle"
-alignment = 0
-theme_override_styles/normal = SubResource("SBF_row")
-theme_override_styles/hover = SubResource("SBF_row_hover")
-theme_override_styles/pressed = SubResource("SBF_row_hover")
-theme_override_styles/focus = SubResource("SBF_row_hover")
-theme_override_colors/font_color = Color(0.165, 0.150, 0.130, 1)
-theme_override_colors/font_hover_color = Color(0.102, 0.090, 0.078, 1)
-theme_override_colors/font_pressed_color = Color(0.102, 0.090, 0.078, 1)
-theme_override_colors/font_focus_color = Color(0.165, 0.150, 0.130, 1)
-theme_override_font_sizes/font_size = 18
+theme_override_styles/normal = SubResource("SBF_btn_primary")
+theme_override_styles/hover = SubResource("SBF_btn_primary_hover")
+theme_override_styles/pressed = SubResource("SBF_btn_primary_hover")
+theme_override_styles/focus = SubResource("SBF_btn_primary_hover")
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_colors/font_pressed_color = Color(1, 1, 1, 1)
+theme_override_colors/font_focus_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 19
 
 [node name="BtnJoin" type="Button" parent="RootPanel/VBox"]
-custom_minimum_size = Vector2(0, 64)
+custom_minimum_size = Vector2(0, 72)
 layout_mode = 2
 text = "Rejoindre une salle"
-alignment = 0
-theme_override_styles/normal = SubResource("SBF_row")
-theme_override_styles/hover = SubResource("SBF_row_hover")
-theme_override_styles/pressed = SubResource("SBF_row_hover")
-theme_override_styles/focus = SubResource("SBF_row_hover")
-theme_override_colors/font_color = Color(0.165, 0.150, 0.130, 1)
-theme_override_colors/font_hover_color = Color(0.102, 0.090, 0.078, 1)
-theme_override_colors/font_pressed_color = Color(0.102, 0.090, 0.078, 1)
-theme_override_colors/font_focus_color = Color(0.165, 0.150, 0.130, 1)
+theme_override_styles/normal = SubResource("SBF_btn_default")
+theme_override_styles/hover = SubResource("SBF_btn_default_hover")
+theme_override_styles/pressed = SubResource("SBF_btn_default_hover")
+theme_override_styles/focus = SubResource("SBF_btn_default_hover")
+theme_override_colors/font_color = Color(0.95, 0.95, 0.95, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_colors/font_pressed_color = Color(1, 1, 1, 1)
+theme_override_colors/font_focus_color = Color(1, 1, 1, 1)
 theme_override_font_sizes/font_size = 18
 
 [node name="Spacer2" type="Control" parent="RootPanel/VBox"]
-custom_minimum_size = Vector2(0, 4)
+custom_minimum_size = Vector2(0, 14)
 layout_mode = 2
 
 [node name="BtnQuit" type="Button" parent="RootPanel/VBox"]
-custom_minimum_size = Vector2(0, 40)
+custom_minimum_size = Vector2(0, 44)
 layout_mode = 2
 flat = true
 text = "Quitter le jeu"
-alignment = 1
 theme_override_styles/normal = SubResource("SBE_text")
 theme_override_styles/hover = SubResource("SBE_text")
 theme_override_styles/pressed = SubResource("SBE_text")
 theme_override_styles/focus = SubResource("SBE_text")
-theme_override_colors/font_color = Color(0.495, 0.475, 0.443, 1)
-theme_override_colors/font_hover_color = Color(0.785, 0.225, 0.180, 1)
-theme_override_colors/font_pressed_color = Color(0.785, 0.225, 0.180, 1)
-theme_override_colors/font_focus_color = Color(0.495, 0.475, 0.443, 1)
-theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(0.45, 0.45, 0.45, 1)
+theme_override_colors/font_hover_color = Color(0.880, 0.024, 0.000, 1)
+theme_override_colors/font_pressed_color = Color(0.880, 0.024, 0.000, 1)
+theme_override_colors/font_focus_color = Color(0.45, 0.45, 0.45, 1)
+theme_override_font_sizes/font_size = 14
 
 [node name="CreateLobbyPanel" type="Panel" parent="."]
 visible = false
@@ -363,22 +362,22 @@ grow_vertical = 2
 theme_override_constants/separation = 16
 
 [node name="NavBar" type="HBoxContainer" parent="CreateLobbyPanel/VBox"]
-custom_minimum_size = Vector2(0, 48)
+custom_minimum_size = Vector2(0, 56)
 layout_mode = 2
 theme_override_constants/separation = 12
 
 [node name="BtnNavBack" type="Button" parent="CreateLobbyPanel/VBox/NavBar"]
-custom_minimum_size = Vector2(96, 48)
+custom_minimum_size = Vector2(120, 56)
 layout_mode = 2
 text = "←   Retour"
 theme_override_styles/normal = SubResource("SBF_btn_nav")
 theme_override_styles/hover = SubResource("SBF_btn_nav_hover")
 theme_override_styles/pressed = SubResource("SBF_btn_nav_hover")
 theme_override_styles/focus = SubResource("SBF_btn_nav_hover")
-theme_override_colors/font_color = Color(0.165, 0.150, 0.130, 1)
-theme_override_colors/font_hover_color = Color(0.102, 0.090, 0.078, 1)
-theme_override_colors/font_pressed_color = Color(0.102, 0.090, 0.078, 1)
-theme_override_colors/font_focus_color = Color(0.165, 0.150, 0.130, 1)
+theme_override_colors/font_color = Color(0.95, 0.95, 0.95, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_colors/font_pressed_color = Color(1, 1, 1, 1)
+theme_override_colors/font_focus_color = Color(1, 1, 1, 1)
 theme_override_font_sizes/font_size = 14
 
 [node name="NavTitle" type="Label" parent="CreateLobbyPanel/VBox/NavBar"]
@@ -388,39 +387,39 @@ size_flags_vertical = 5
 text = "Salle"
 horizontal_alignment = 1
 vertical_alignment = 1
-theme_override_colors/font_color = Color(0.165, 0.150, 0.130, 1)
+theme_override_colors/font_color = Color(0.95, 0.95, 0.95, 1)
 theme_override_font_sizes/font_size = 16
 
 [node name="NavSpacer" type="Control" parent="CreateLobbyPanel/VBox/NavBar"]
-custom_minimum_size = Vector2(96, 0)
+custom_minimum_size = Vector2(120, 0)
 layout_mode = 2
 
 [node name="NavSep" type="ColorRect" parent="CreateLobbyPanel/VBox"]
 custom_minimum_size = Vector2(0, 1)
 layout_mode = 2
-color = Color(0.870, 0.855, 0.815, 1)
+color = Color(0.165, 0.165, 0.165, 1)
 
 [node name="HeaderLabel" type="Label" parent="CreateLobbyPanel/VBox"]
 layout_mode = 2
 text = "PARTAGER CE CODE"
 horizontal_alignment = 1
-theme_override_colors/font_color = Color(0.495, 0.475, 0.443, 1)
+theme_override_colors/font_color = Color(0.55, 0.55, 0.55, 1)
 theme_override_font_sizes/font_size = 11
 
 [node name="CodeLabel" type="Label" parent="CreateLobbyPanel/VBox"]
-custom_minimum_size = Vector2(0, 110)
+custom_minimum_size = Vector2(0, 120)
 layout_mode = 2
 text = "ABCD"
 horizontal_alignment = 1
 vertical_alignment = 1
-theme_override_colors/font_color = Color(0.102, 0.090, 0.078, 1)
-theme_override_font_sizes/font_size = 96
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 100
 
 [node name="PlayerCountLabel" type="Label" parent="CreateLobbyPanel/VBox"]
 layout_mode = 2
 text = "1 joueur connecté"
 horizontal_alignment = 1
-theme_override_colors/font_color = Color(0.165, 0.150, 0.130, 1)
+theme_override_colors/font_color = Color(0.95, 0.95, 0.95, 1)
 theme_override_font_sizes/font_size = 14
 
 [node name="PlayerListLabel" type="Label" parent="CreateLobbyPanel/VBox"]
@@ -428,7 +427,7 @@ custom_minimum_size = Vector2(0, 56)
 layout_mode = 2
 text = "·  Toi (hôte)"
 horizontal_alignment = 1
-theme_override_colors/font_color = Color(0.495, 0.475, 0.443, 1)
+theme_override_colors/font_color = Color(0.55, 0.55, 0.55, 1)
 theme_override_font_sizes/font_size = 13
 
 [node name="HBox" type="VBoxContainer" parent="CreateLobbyPanel/VBox"]
@@ -436,7 +435,7 @@ layout_mode = 2
 theme_override_constants/separation = 10
 
 [node name="BtnStart" type="Button" parent="CreateLobbyPanel/VBox/HBox"]
-custom_minimum_size = Vector2(0, 72)
+custom_minimum_size = Vector2(0, 80)
 layout_mode = 2
 text = "Démarrer la course"
 theme_override_styles/normal = SubResource("SBF_btn_primary")
@@ -447,20 +446,20 @@ theme_override_colors/font_color = Color(1, 1, 1, 1)
 theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
 theme_override_colors/font_pressed_color = Color(1, 1, 1, 1)
 theme_override_colors/font_focus_color = Color(1, 1, 1, 1)
-theme_override_font_sizes/font_size = 18
+theme_override_font_sizes/font_size = 19
 
 [node name="BtnCopy" type="Button" parent="CreateLobbyPanel/VBox/HBox"]
-custom_minimum_size = Vector2(0, 56)
+custom_minimum_size = Vector2(0, 60)
 layout_mode = 2
 text = "Copier le code"
 theme_override_styles/normal = SubResource("SBF_btn_nav")
 theme_override_styles/hover = SubResource("SBF_btn_nav_hover")
 theme_override_styles/pressed = SubResource("SBF_btn_nav_hover")
 theme_override_styles/focus = SubResource("SBF_btn_nav_hover")
-theme_override_colors/font_color = Color(0.165, 0.150, 0.130, 1)
-theme_override_colors/font_hover_color = Color(0.102, 0.090, 0.078, 1)
-theme_override_colors/font_pressed_color = Color(0.102, 0.090, 0.078, 1)
-theme_override_colors/font_focus_color = Color(0.165, 0.150, 0.130, 1)
+theme_override_colors/font_color = Color(0.95, 0.95, 0.95, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_colors/font_pressed_color = Color(1, 1, 1, 1)
+theme_override_colors/font_focus_color = Color(1, 1, 1, 1)
 theme_override_font_sizes/font_size = 15
 
 [node name="BtnBack" type="Button" parent="CreateLobbyPanel/VBox"]
@@ -473,10 +472,10 @@ theme_override_styles/normal = SubResource("SBE_text")
 theme_override_styles/hover = SubResource("SBE_text")
 theme_override_styles/pressed = SubResource("SBE_text")
 theme_override_styles/focus = SubResource("SBE_text")
-theme_override_colors/font_color = Color(0.495, 0.475, 0.443, 1)
-theme_override_colors/font_hover_color = Color(0.785, 0.225, 0.180, 1)
-theme_override_colors/font_pressed_color = Color(0.785, 0.225, 0.180, 1)
-theme_override_colors/font_focus_color = Color(0.495, 0.475, 0.443, 1)
+theme_override_colors/font_color = Color(0.55, 0.55, 0.55, 1)
+theme_override_colors/font_hover_color = Color(0.880, 0.024, 0.000, 1)
+theme_override_colors/font_pressed_color = Color(0.880, 0.024, 0.000, 1)
+theme_override_colors/font_focus_color = Color(0.55, 0.55, 0.55, 1)
 theme_override_font_sizes/font_size = 13
 
 [node name="JoinInputPanel" type="Panel" parent="."]
@@ -488,9 +487,9 @@ anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
 offset_left = -300.0
-offset_top = -270.0
+offset_top = -290.0
 offset_right = 300.0
-offset_bottom = 270.0
+offset_bottom = 290.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_styles/panel = SubResource("SBF_card")
@@ -509,22 +508,22 @@ grow_vertical = 2
 theme_override_constants/separation = 18
 
 [node name="NavBar" type="HBoxContainer" parent="JoinInputPanel/VBox"]
-custom_minimum_size = Vector2(0, 48)
+custom_minimum_size = Vector2(0, 56)
 layout_mode = 2
 theme_override_constants/separation = 12
 
 [node name="BtnNavBack" type="Button" parent="JoinInputPanel/VBox/NavBar"]
-custom_minimum_size = Vector2(96, 48)
+custom_minimum_size = Vector2(120, 56)
 layout_mode = 2
 text = "←   Retour"
 theme_override_styles/normal = SubResource("SBF_btn_nav")
 theme_override_styles/hover = SubResource("SBF_btn_nav_hover")
 theme_override_styles/pressed = SubResource("SBF_btn_nav_hover")
 theme_override_styles/focus = SubResource("SBF_btn_nav_hover")
-theme_override_colors/font_color = Color(0.165, 0.150, 0.130, 1)
-theme_override_colors/font_hover_color = Color(0.102, 0.090, 0.078, 1)
-theme_override_colors/font_pressed_color = Color(0.102, 0.090, 0.078, 1)
-theme_override_colors/font_focus_color = Color(0.165, 0.150, 0.130, 1)
+theme_override_colors/font_color = Color(0.95, 0.95, 0.95, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_colors/font_pressed_color = Color(1, 1, 1, 1)
+theme_override_colors/font_focus_color = Color(1, 1, 1, 1)
 theme_override_font_sizes/font_size = 14
 
 [node name="NavTitle" type="Label" parent="JoinInputPanel/VBox/NavBar"]
@@ -534,27 +533,27 @@ size_flags_vertical = 5
 text = "Rejoindre"
 horizontal_alignment = 1
 vertical_alignment = 1
-theme_override_colors/font_color = Color(0.165, 0.150, 0.130, 1)
+theme_override_colors/font_color = Color(0.95, 0.95, 0.95, 1)
 theme_override_font_sizes/font_size = 16
 
 [node name="NavSpacer" type="Control" parent="JoinInputPanel/VBox/NavBar"]
-custom_minimum_size = Vector2(96, 0)
+custom_minimum_size = Vector2(120, 0)
 layout_mode = 2
 
 [node name="NavSep" type="ColorRect" parent="JoinInputPanel/VBox"]
 custom_minimum_size = Vector2(0, 1)
 layout_mode = 2
-color = Color(0.870, 0.855, 0.815, 1)
+color = Color(0.165, 0.165, 0.165, 1)
 
 [node name="HeaderLabel" type="Label" parent="JoinInputPanel/VBox"]
 layout_mode = 2
 text = "CODE DE LA SALLE"
 horizontal_alignment = 1
-theme_override_colors/font_color = Color(0.495, 0.475, 0.443, 1)
+theme_override_colors/font_color = Color(0.55, 0.55, 0.55, 1)
 theme_override_font_sizes/font_size = 11
 
 [node name="CodeInput" type="LineEdit" parent="JoinInputPanel/VBox"]
-custom_minimum_size = Vector2(0, 116)
+custom_minimum_size = Vector2(0, 120)
 layout_mode = 2
 mouse_default_cursor_shape = 1
 placeholder_text = "ABCD"
@@ -567,18 +566,18 @@ caret_blink_interval = 0.6
 theme_override_styles/normal = SubResource("SBF_input")
 theme_override_styles/focus = SubResource("SBF_input_focus")
 theme_override_styles/read_only = SubResource("SBF_input")
-theme_override_colors/font_color = Color(0.102, 0.090, 0.078, 1)
-theme_override_colors/font_placeholder_color = Color(0.745, 0.730, 0.690, 1)
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_placeholder_color = Color(0.30, 0.30, 0.30, 1)
 theme_override_colors/font_selected_color = Color(1, 1, 1, 1)
-theme_override_colors/selection_color = Color(0.785, 0.225, 0.180, 1)
-theme_override_colors/caret_color = Color(0.785, 0.225, 0.180, 1)
+theme_override_colors/selection_color = Color(0.880, 0.024, 0.000, 1)
+theme_override_colors/caret_color = Color(0.880, 0.024, 0.000, 1)
 theme_override_font_sizes/font_size = 64
 
 [node name="HintLabel" type="Label" parent="JoinInputPanel/VBox"]
 layout_mode = 2
 text = "Quatre lettres, partagées par l'hôte."
 horizontal_alignment = 1
-theme_override_colors/font_color = Color(0.595, 0.575, 0.540, 1)
+theme_override_colors/font_color = Color(0.55, 0.55, 0.55, 1)
 theme_override_font_sizes/font_size = 13
 
 [node name="HBox" type="VBoxContainer" parent="JoinInputPanel/VBox"]
@@ -586,7 +585,7 @@ layout_mode = 2
 theme_override_constants/separation = 10
 
 [node name="BtnConfirm" type="Button" parent="JoinInputPanel/VBox/HBox"]
-custom_minimum_size = Vector2(0, 72)
+custom_minimum_size = Vector2(0, 80)
 layout_mode = 2
 text = "Rejoindre"
 theme_override_styles/normal = SubResource("SBF_btn_primary")
@@ -597,7 +596,7 @@ theme_override_colors/font_color = Color(1, 1, 1, 1)
 theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
 theme_override_colors/font_pressed_color = Color(1, 1, 1, 1)
 theme_override_colors/font_focus_color = Color(1, 1, 1, 1)
-theme_override_font_sizes/font_size = 18
+theme_override_font_sizes/font_size = 19
 
 [node name="BtnBack" type="Button" parent="JoinInputPanel/VBox/HBox"]
 custom_minimum_size = Vector2(0, 44)
@@ -609,10 +608,10 @@ theme_override_styles/normal = SubResource("SBE_text")
 theme_override_styles/hover = SubResource("SBE_text")
 theme_override_styles/pressed = SubResource("SBE_text")
 theme_override_styles/focus = SubResource("SBE_text")
-theme_override_colors/font_color = Color(0.495, 0.475, 0.443, 1)
-theme_override_colors/font_hover_color = Color(0.785, 0.225, 0.180, 1)
-theme_override_colors/font_pressed_color = Color(0.785, 0.225, 0.180, 1)
-theme_override_colors/font_focus_color = Color(0.495, 0.475, 0.443, 1)
+theme_override_colors/font_color = Color(0.55, 0.55, 0.55, 1)
+theme_override_colors/font_hover_color = Color(0.880, 0.024, 0.000, 1)
+theme_override_colors/font_pressed_color = Color(0.880, 0.024, 0.000, 1)
+theme_override_colors/font_focus_color = Color(0.55, 0.55, 0.55, 1)
 theme_override_font_sizes/font_size = 14
 
 [node name="JoinLobbyPanel" type="Panel" parent="."]
@@ -624,9 +623,9 @@ anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
 offset_left = -300.0
-offset_top = -260.0
+offset_top = -270.0
 offset_right = 300.0
-offset_bottom = 260.0
+offset_bottom = 270.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_styles/panel = SubResource("SBF_card")
@@ -645,22 +644,22 @@ grow_vertical = 2
 theme_override_constants/separation = 16
 
 [node name="NavBar" type="HBoxContainer" parent="JoinLobbyPanel/VBox"]
-custom_minimum_size = Vector2(0, 48)
+custom_minimum_size = Vector2(0, 56)
 layout_mode = 2
 theme_override_constants/separation = 12
 
 [node name="BtnNavBack" type="Button" parent="JoinLobbyPanel/VBox/NavBar"]
-custom_minimum_size = Vector2(96, 48)
+custom_minimum_size = Vector2(120, 56)
 layout_mode = 2
 text = "←   Quitter"
 theme_override_styles/normal = SubResource("SBF_btn_nav")
 theme_override_styles/hover = SubResource("SBF_btn_nav_hover")
 theme_override_styles/pressed = SubResource("SBF_btn_nav_hover")
 theme_override_styles/focus = SubResource("SBF_btn_nav_hover")
-theme_override_colors/font_color = Color(0.165, 0.150, 0.130, 1)
-theme_override_colors/font_hover_color = Color(0.102, 0.090, 0.078, 1)
-theme_override_colors/font_pressed_color = Color(0.102, 0.090, 0.078, 1)
-theme_override_colors/font_focus_color = Color(0.165, 0.150, 0.130, 1)
+theme_override_colors/font_color = Color(0.95, 0.95, 0.95, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_colors/font_pressed_color = Color(1, 1, 1, 1)
+theme_override_colors/font_focus_color = Color(1, 1, 1, 1)
 theme_override_font_sizes/font_size = 14
 
 [node name="NavTitle" type="Label" parent="JoinLobbyPanel/VBox/NavBar"]
@@ -670,46 +669,46 @@ size_flags_vertical = 5
 text = "Connecté"
 horizontal_alignment = 1
 vertical_alignment = 1
-theme_override_colors/font_color = Color(0.165, 0.150, 0.130, 1)
+theme_override_colors/font_color = Color(0.95, 0.95, 0.95, 1)
 theme_override_font_sizes/font_size = 16
 
 [node name="NavSpacer" type="Control" parent="JoinLobbyPanel/VBox/NavBar"]
-custom_minimum_size = Vector2(96, 0)
+custom_minimum_size = Vector2(120, 0)
 layout_mode = 2
 
 [node name="NavSep" type="ColorRect" parent="JoinLobbyPanel/VBox"]
 custom_minimum_size = Vector2(0, 1)
 layout_mode = 2
-color = Color(0.870, 0.855, 0.815, 1)
+color = Color(0.165, 0.165, 0.165, 1)
 
 [node name="HeaderLabel" type="Label" parent="JoinLobbyPanel/VBox"]
 layout_mode = 2
 text = "SALLE"
 horizontal_alignment = 1
-theme_override_colors/font_color = Color(0.495, 0.475, 0.443, 1)
+theme_override_colors/font_color = Color(0.55, 0.55, 0.55, 1)
 theme_override_font_sizes/font_size = 11
 
 [node name="CodeLabel" type="Label" parent="JoinLobbyPanel/VBox"]
-custom_minimum_size = Vector2(0, 110)
+custom_minimum_size = Vector2(0, 120)
 layout_mode = 2
 text = "ABCD"
 horizontal_alignment = 1
 vertical_alignment = 1
-theme_override_colors/font_color = Color(0.102, 0.090, 0.078, 1)
-theme_override_font_sizes/font_size = 96
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 100
 
 [node name="PlayerCountLabel" type="Label" parent="JoinLobbyPanel/VBox"]
 layout_mode = 2
 text = "2 joueurs connectés"
 horizontal_alignment = 1
-theme_override_colors/font_color = Color(0.165, 0.150, 0.130, 1)
+theme_override_colors/font_color = Color(0.95, 0.95, 0.95, 1)
 theme_override_font_sizes/font_size = 14
 
 [node name="StatusLabel" type="Label" parent="JoinLobbyPanel/VBox"]
 layout_mode = 2
 text = "En attente de l'hôte…"
 horizontal_alignment = 1
-theme_override_colors/font_color = Color(0.785, 0.225, 0.180, 1)
+theme_override_colors/font_color = Color(0.880, 0.024, 0.000, 1)
 theme_override_font_sizes/font_size = 14
 
 [node name="Spacer1" type="Control" parent="JoinLobbyPanel/VBox"]
@@ -717,17 +716,17 @@ custom_minimum_size = Vector2(0, 8)
 layout_mode = 2
 
 [node name="BtnLeave" type="Button" parent="JoinLobbyPanel/VBox"]
-custom_minimum_size = Vector2(0, 56)
+custom_minimum_size = Vector2(0, 60)
 layout_mode = 2
 text = "Quitter la salle"
 theme_override_styles/normal = SubResource("SBF_btn_nav")
 theme_override_styles/hover = SubResource("SBF_btn_nav_hover")
 theme_override_styles/pressed = SubResource("SBF_btn_nav_hover")
 theme_override_styles/focus = SubResource("SBF_btn_nav_hover")
-theme_override_colors/font_color = Color(0.165, 0.150, 0.130, 1)
-theme_override_colors/font_hover_color = Color(0.102, 0.090, 0.078, 1)
-theme_override_colors/font_pressed_color = Color(0.102, 0.090, 0.078, 1)
-theme_override_colors/font_focus_color = Color(0.165, 0.150, 0.130, 1)
+theme_override_colors/font_color = Color(0.95, 0.95, 0.95, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_colors/font_pressed_color = Color(1, 1, 1, 1)
+theme_override_colors/font_focus_color = Color(1, 1, 1, 1)
 theme_override_font_sizes/font_size = 15
 
 [node name="ConnectingPanel" type="Panel" parent="."]
@@ -738,9 +737,9 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -220.0
+offset_left = -240.0
 offset_top = -60.0
-offset_right = 220.0
+offset_right = 240.0
 offset_bottom = 60.0
 grow_horizontal = 2
 grow_vertical = 2
@@ -756,7 +755,7 @@ grow_vertical = 2
 text = "Connexion en cours…"
 horizontal_alignment = 1
 vertical_alignment = 1
-theme_override_colors/font_color = Color(0.165, 0.150, 0.130, 1)
+theme_override_colors/font_color = Color(0.95, 0.95, 0.95, 1)
 theme_override_font_sizes/font_size = 16
 
 [node name="ErrorPanel" type="Panel" parent="."]
@@ -792,7 +791,7 @@ theme_override_constants/separation = 16
 layout_mode = 2
 text = "ERREUR"
 horizontal_alignment = 1
-theme_override_colors/font_color = Color(0.785, 0.225, 0.180, 1)
+theme_override_colors/font_color = Color(0.880, 0.024, 0.000, 1)
 theme_override_font_sizes/font_size = 11
 
 [node name="Label" type="Label" parent="ErrorPanel/VBox"]
@@ -802,7 +801,7 @@ text = "Erreur"
 autowrap_mode = 3
 horizontal_alignment = 1
 vertical_alignment = 1
-theme_override_colors/font_color = Color(0.165, 0.150, 0.130, 1)
+theme_override_colors/font_color = Color(0.95, 0.95, 0.95, 1)
 theme_override_font_sizes/font_size = 18
 
 [node name="BtnBack" type="Button" parent="ErrorPanel/VBox"]
@@ -836,8 +835,31 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0.957, 0.945, 0.918, 1)
+color = Color(0.039, 0.039, 0.039, 1)
 mouse_filter = 1
+
+[node name="OBackgroundImage" type="TextureRect" parent="OrientationOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("4_bg_portrait")
+expand_mode = 1
+stretch_mode = 6
+modulate = Color(0.55, 0.55, 0.55, 1)
+
+[node name="OBackgroundDim" type="ColorRect" parent="OrientationOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0, 0, 0, 0.55)
 
 [node name="PhoneIcon" type="Label" parent="OrientationOverlay"]
 layout_mode = 1
@@ -856,7 +878,7 @@ pivot_offset = Vector2(90, 90)
 text = "▭"
 horizontal_alignment = 1
 vertical_alignment = 1
-theme_override_colors/font_color = Color(0.102, 0.090, 0.078, 1)
+theme_override_colors/font_color = Color(0.95, 0.95, 0.95, 1)
 theme_override_font_sizes/font_size = 140
 
 [node name="OMessage" type="Label" parent="OrientationOverlay"]
@@ -876,7 +898,7 @@ text = "Tourne ton téléphone à l'horizontale"
 horizontal_alignment = 1
 vertical_alignment = 1
 autowrap_mode = 3
-theme_override_colors/font_color = Color(0.165, 0.150, 0.130, 1)
+theme_override_colors/font_color = Color(0.95, 0.95, 0.95, 1)
 theme_override_font_sizes/font_size = 22
 
 [node name="OHint" type="Label" parent="OrientationOverlay"]
@@ -895,5 +917,5 @@ grow_vertical = 2
 text = "Le menu réapparaîtra automatiquement."
 horizontal_alignment = 1
 vertical_alignment = 1
-theme_override_colors/font_color = Color(0.495, 0.475, 0.443, 1)
+theme_override_colors/font_color = Color(0.55, 0.55, 0.55, 1)
 theme_override_font_sizes/font_size = 14
