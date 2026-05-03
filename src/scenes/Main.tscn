@@ -1,10 +1,11 @@
-[gd_scene load_steps=7 format=3]
+[gd_scene load_steps=8 format=3]
 
 [ext_resource type="PackedScene" path="res://scenes/Track01.tscn" id="1_track"]
 [ext_resource type="PackedScene" path="res://scenes/Car.tscn" id="2_car"]
 [ext_resource type="PackedScene" path="res://scenes/BotCar.tscn" id="3_bot"]
 [ext_resource type="Script" path="res://scripts/camera_follow.gd" id="4_cam"]
 [ext_resource type="Script" path="res://scripts/race_manager.gd" id="5_race"]
+[ext_resource type="Script" path="res://scripts/minimap.gd" id="6_minimap"]
 
 [sub_resource type="Environment" id="Env_default"]
 background_mode = 1
@@ -150,6 +151,27 @@ theme_override_colors/font_outline_color = Color(0.05, 0.05, 0.05, 1)
 theme_override_constants/outline_size = 8
 theme_override_font_sizes/font_size = 38
 
+[node name="MiniMap" type="Control" parent="HUD"]
+offset_left = 20.0
+offset_top = 540.0
+offset_right = 260.0
+offset_bottom = 700.0
+script = ExtResource("6_minimap")
+race_manager_path = NodePath("../../RaceManager")
+
+[node name="SpeedometerLabel" type="Label" parent="HUD"]
+offset_left = 1040.0
+offset_top = 590.0
+offset_right = 1260.0
+offset_bottom = 700.0
+text = "0 m/s"
+horizontal_alignment = 2
+vertical_alignment = 1
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_outline_color = Color(0.05, 0.05, 0.05, 1)
+theme_override_constants/outline_size = 8
+theme_override_font_sizes/font_size = 56
+
 [node name="RaceManager" type="Node" parent="."]
 script = ExtResource("5_race")
 player_paths = [NodePath("../P1_Red"), NodePath("../P2_Cyan")]
@@ -160,3 +182,4 @@ menu_label_path = NodePath("../HUD/MenuLabel")
 countdown_label_path = NodePath("../HUD/CountdownLabel")
 race_info_label_path = NodePath("../HUD/RaceInfoLabel")
 results_label_path = NodePath("../HUD/ResultsLabel")
+speedometer_label_path = NodePath("../HUD/SpeedometerLabel")

@@ -29,6 +29,7 @@ enum State { MENU, PRE_RACE, COUNTDOWN, RACING, FINISHED }
 @export var countdown_label_path: NodePath
 @export var race_info_label_path: NodePath
 @export var results_label_path: NodePath
+@export var speedometer_label_path: NodePath
 
 var _state: State = State.MENU
 var _race_start_time: float = 0.0
@@ -45,6 +46,7 @@ var _menu_label: Label
 var _countdown_label: Label
 var _race_info_label: Label
 var _results_label: Label
+var _speedometer_label: Label
 
 
 func _ready() -> void:
@@ -52,6 +54,7 @@ func _ready() -> void:
 	_countdown_label = get_node_or_null(countdown_label_path) as Label
 	_race_info_label = get_node_or_null(race_info_label_path) as Label
 	_results_label = get_node_or_null(results_label_path) as Label
+	_speedometer_label = get_node_or_null(speedometer_label_path) as Label
 	_camera = get_node_or_null(camera_path)
 
 	for i in range(player_paths.size()):
@@ -204,6 +207,21 @@ func _process(_delta: float) -> void:
 		_feed_progress_gaps_to_players()
 		_check_eliminations()
 		_update_race_hud()
+		_update_speedometer()
+
+
+func _update_speedometer() -> void:
+	if _speedometer_label == null:
+		return
+	var s: float = get_player_speed()
+	_speedometer_label.text = "%d m/s" % round(s)
+	# Color-code: white normal, yellow fast, orange boosting
+	if s >= 90.0:
+		_speedometer_label.add_theme_color_override("font_color", Color(1.0, 0.5, 0.1, 1))
+	elif s >= 50.0:
+		_speedometer_label.add_theme_color_override("font_color", Color(1.0, 0.95, 0.3, 1))
+	else:
+		_speedometer_label.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0, 1))
 
 
 func _feed_progress_gaps_to_players() -> void:
@@ -427,3 +445,33 @@ func _racer_progress(racer: Node) -> float:
 	var angle: float = atan2(pos.z / OVAL_B, pos.x / OVAL_A)
 	var progress_in_lap: float = wrapf((START_ANGLE - angle) / TAU, 0.0, 1.0)
 	return laps + progress_in_lap
+
+
+# Public API for HUD widgets (minimap)
+func get_minimap_dots() -> Array:
+	var dots: Array = []
+	for r in _racers:
+		var color: Color = Color.WHITE
+		if "car_color" in r:
+			color = r.car_color
+		elif "bot_color" in r:
+			color = r.bot_color
+		if _eliminated.has(r):
+			color = Color(0.4, 0.4, 0.4, 0.5)
+		dots.append({
+			"pos": r.global_position,
+			"color": color,
+			"is_player": r in _players,
+		})
+	return dots
+
+
+# Public API for HUD widgets (speedometer) — returns P1's forward speed in m/s
+func get_player_speed() -> float:
+	if _players.is_empty():
+		return 0.0
+	var p: Node = _players[0]
+	if not (p is RigidBody3D):
+		return 0.0
+	var fwd: Vector3 = -p.transform.basis.z
+	return p.linear_velocity.dot(fwd)
