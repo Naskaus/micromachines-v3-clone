@@ -100,21 +100,7 @@ func _ready() -> void:
 	if _results_label:
 		_results_label.visible = false
 
-	# Attach a Label3D rank banner above each car
-	for r in _racers:
-		var banner: Label3D = Label3D.new()
-		banner.name = "RankBanner"
-		banner.text = "—"
-		banner.position = Vector3(0, 4.5, 0)
-		banner.font_size = 96
-		banner.outline_size = 12
-		banner.modulate = Color(1, 1, 1, 1)
-		banner.outline_modulate = Color(0, 0, 0, 1)
-		banner.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-		banner.no_depth_test = true
-		banner.fixed_size = true
-		banner.pixel_size = 0.012
-		r.add_child(banner)
+	# (Rank banners removed — they were ugly. The HUD already shows position per player.)
 
 	# Freeze everyone, hide race-time HUD, show MENU
 	for r in _racers:
@@ -155,12 +141,12 @@ func _start_countdown() -> void:
 			_countdown_label.text = str(n)
 			_countdown_label.visible = true
 		if AudioManager:
-			AudioManager.play("countdown_beep", 0.0, 0.85)  # low beep
+			AudioManager.play("countdown_beep", -6.0, 0.85)  # low beep
 		await get_tree().create_timer(1.0).timeout
 	if _countdown_label:
 		_countdown_label.text = "GO !"
 	if AudioManager:
-		AudioManager.play("go", 6.0, 1.4)  # bright high beep — race start
+		AudioManager.play("go", 0.0, 1.2)  # softer, slightly higher
 		AudioManager.start_engine()
 		AudioManager.play_music("race")
 	await get_tree().create_timer(0.8).timeout
@@ -202,19 +188,19 @@ func _on_arch_entered(body: Node, arch_idx: int) -> void:
 		data.next_arch_index = 0
 		# Lap complete chime — player only
 		if data.is_player and AudioManager:
-			AudioManager.play("lap_complete", 0.0, 1.0)
+			AudioManager.play("lap_complete", -4.0, 1.0)
 		if data.laps >= TOTAL_LAPS:
 			data.finished = true
 			data.finish_time = now - _race_start_time
 			_finish_order.append(body)
 			if data.is_player and AudioManager:
-				AudioManager.play("win", 4.0, 1.0)
+				AudioManager.play("win", 0.0, 1.0)
 			_check_race_end()
 	else:
 		data.next_arch_index = arch_idx + 1
 		# Arch pass chime — subtle ding
 		if data.is_player and AudioManager:
-			AudioManager.play("arch_pass", -6.0, 1.3)
+			AudioManager.play("arch_pass", -12.0, 1.3)
 
 
 func _check_race_end() -> void:
@@ -276,33 +262,6 @@ func _process(_delta: float) -> void:
 		_update_race_hud()
 		_update_speedometer()
 		_update_arch_highlight()
-		_update_rank_banners()
-
-
-func _update_rank_banners() -> void:
-	# Set "1ER" / "2EME" etc. labels above each car based on current ranking.
-	var rankings: Array = _compute_rankings()
-	for i in range(rankings.size()):
-		var r: Node = rankings[i]
-		var banner: Label3D = r.get_node_or_null("RankBanner") as Label3D
-		if banner == null:
-			continue
-		if _eliminated.has(r):
-			banner.text = "OUT"
-			banner.modulate = Color(0.5, 0.5, 0.5, 0.6)
-			continue
-		var data: Dictionary = _racer_data.get(r, {})
-		if data.get("finished", false):
-			banner.text = "✓"
-			banner.modulate = Color(0.3, 1.0, 0.4, 1)
-			continue
-		banner.text = _place_label(i + 1).to_upper()
-		# Color: 1st = gold, 2nd = silver, 3rd = bronze, others = white
-		match i:
-			0: banner.modulate = Color(1.0, 0.85, 0.1, 1)
-			1: banner.modulate = Color(0.85, 0.85, 0.9, 1)
-			2: banner.modulate = Color(0.85, 0.55, 0.25, 1)
-			_: banner.modulate = Color(1, 1, 1, 0.85)
 
 
 func _update_arch_highlight() -> void:

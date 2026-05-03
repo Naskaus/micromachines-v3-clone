@@ -303,13 +303,13 @@ func _physics_process(delta: float) -> void:
 	var fwd_speed: float = vel.dot(fwd)
 	var lateral_speed: float = vel.dot(right)
 
-	# 4. Rubber-banding vs P1
+	# 4. Rubber-banding vs P1 — bot AHEAD = slower (let P1 catch up); BEHIND = faster (chase P1)
 	if _player:
 		var p_phase: float = PathUtils.phase_from_position(_player.global_position)
 		var t_diff: float = wrapf(_path_phase - p_phase, -0.5, 0.5)  # signed lap fraction
 		var rubber: float = 1.0
 		if abs(t_diff) > RUBBER_DEAD_ZONE:
-			rubber = 1.0 + clamp(t_diff / 0.25, -1.0, 1.0) * RUBBER_MAX
+			rubber = 1.0 - clamp(t_diff / 0.25, -1.0, 1.0) * RUBBER_MAX
 		_bot_top_speed = _base_top_speed * rubber
 
 	# 5. (Magnetic pull removed — was catapulting bots into walls. Steering alone keeps them on path.)

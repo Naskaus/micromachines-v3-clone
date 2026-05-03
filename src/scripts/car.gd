@@ -292,7 +292,7 @@ func _on_collision_impact(_body: Node) -> void:
 	if AudioManager:
 		var key: String = "hit_heavy" if v > 35.0 else "hit_light"
 		var pitch: float = clamp(0.9 + v * 0.005, 0.8, 1.3)
-		AudioManager.play(key, 0.0, pitch)
+		AudioManager.play(key, -6.0, pitch)
 
 
 func _effective_top_speed() -> float:
@@ -395,11 +395,9 @@ func _physics_process(delta: float) -> void:
 		turn_rate *= TURN_RATE_DRIFT_BONUS
 	angular_velocity.y = steer_input * turn_rate
 
-	# Skid SFX on drift edge — only P1, only when entering drift
-	if player_id == 1 and AudioManager:
-		if is_hard_turning and not _was_drifting:
-			AudioManager.play("skid", -8.0, 1.0)
-		_was_drifting = is_hard_turning
+	# (Skid SFX disabled — Kenney's plates_slide sounded too robotic for a racing game.
+	# Visual drift smoke particles already give feedback. Real tire screech in V0.17+.)
+	_was_drifting = is_hard_turning
 
 	# --- DRIFT / GRIP --- (is_hard_turning already computed above)
 	var grip: float = DRIFT_GRIP if is_hard_turning else LATERAL_GRIP

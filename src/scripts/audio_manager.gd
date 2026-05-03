@@ -22,13 +22,13 @@ const SFX_PATHS := {
 }
 
 const ENGINE_PATH := "res://assets/audio/engine3.ogg"
-const ENGINE_PITCH_IDLE := 0.85
-const ENGINE_PITCH_MAX := 2.0
-const ENGINE_VOLUME_DB := -24.0   # ambient texture only — music + crashes own the foreground
+const ENGINE_PITCH_IDLE := 0.55     # lower idle = softer rumble
+const ENGINE_PITCH_MAX := 1.4       # less screech at top speed
+const ENGINE_VOLUME_DB := -30.0     # very ambient — barely there
 
 const MUSIC_RACE := "res://assets/audio/time_driving.ogg"
 const MUSIC_MENU := "res://assets/audio/mishief_stroll.ogg"
-const MUSIC_VOLUME_DB := -4.0     # foreground
+const MUSIC_VOLUME_DB := -4.0
 
 const POOL_SIZE := 8
 var _streams: Dictionary = {}
@@ -37,6 +37,9 @@ var _next_player: int = 0
 
 var _engine_player: AudioStreamPlayer = null
 var _music_player: AudioStreamPlayer = null
+
+var sfx_muted: bool = false
+var music_muted: bool = false
 
 
 func _ready() -> void:
@@ -72,6 +75,8 @@ func _ready() -> void:
 
 
 func play(key: String, volume_db: float = 0.0, pitch: float = 1.0) -> void:
+	if sfx_muted:
+		return
 	if not _streams.has(key):
 		push_warning("AudioManager: unknown SFX key '%s'" % key)
 		return
@@ -87,6 +92,21 @@ func play(key: String, volume_db: float = 0.0, pitch: float = 1.0) -> void:
 	p.volume_db = volume_db
 	p.pitch_scale = pitch
 	p.play()
+
+
+func toggle_sfx() -> bool:
+	# Returns the new muted state (true = now muted)
+	sfx_muted = not sfx_muted
+	if _engine_player:
+		_engine_player.volume_db = -80.0 if sfx_muted else ENGINE_VOLUME_DB
+	return sfx_muted
+
+
+func toggle_music() -> bool:
+	music_muted = not music_muted
+	if _music_player:
+		_music_player.volume_db = -80.0 if music_muted else MUSIC_VOLUME_DB
+	return music_muted
 
 
 func start_engine() -> void:

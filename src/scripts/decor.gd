@@ -341,30 +341,20 @@ func _ready() -> void:
 	# Giant food items scattered around the perimeter — picnic-on-pool-table vibe
 	_spawn_food_scatter()
 
-	# Painted "START" text on the ground at the start line
-	_spawn_start_label()
-
-	# Hot Wheels visual flair — giant loops + banked ramps as pure decor (no collision)
-	_spawn_hot_wheels_decor()
-
 
 func _spawn_hot_wheels_decor() -> void:
-	# 2 giant loops at the figure-8 extremities, scaled ×6, positioned alongside the track
-	# (not over it — cars don't pass through them, they're decorative landmarks)
+	# Loops + ramps placed CLOSE to the racing line so they're visible during play.
 	var loop_glb: String = "res://assets/toy_kit/track-narrow-looping.glb"
-	_spawn_visual(loop_glb, Vector3(0, 0, -135), 0.0, 6.0)
-	_spawn_visual(loop_glb, Vector3(0, 0, +135), PI, 6.0)
+	# 4 GIANT loops bracketing the 2 oval extremities — visible when curving past them
+	_spawn_visual(loop_glb, Vector3(40, 0, -110), PI/2.0, 8.0)
+	_spawn_visual(loop_glb, Vector3(-40, 0, -110), -PI/2.0, 8.0)
+	_spawn_visual(loop_glb, Vector3(40, 0, 110), PI/2.0, 8.0)
+	_spawn_visual(loop_glb, Vector3(-40, 0, 110), -PI/2.0, 8.0)
 
-	# 4 banked corner ramps outside the figure-8 corners
+	# 2 banked corner ramps right in the middle of each oval (clearly visible from above)
 	var ramp_glb: String = "res://assets/toy_kit/track-narrow-corner-large-ramp.glb"
-	_spawn_visual(ramp_glb, Vector3(115, 0, -115), -PI/4.0, 5.0)
-	_spawn_visual(ramp_glb, Vector3(-115, 0, -115), PI/4.0, 5.0)
-	_spawn_visual(ramp_glb, Vector3(115, 0, +115), -PI*0.75, 5.0)
-	_spawn_visual(ramp_glb, Vector3(-115, 0, +115), PI*0.75, 5.0)
-
-	# Finish gate arch over the start line — scenic
-	var gate_glb: String = "res://assets/toy_kit/gate-finish.glb"
-	_spawn_visual(gate_glb, Vector3(58.0, 0.0, -8.0), atan2(0.95317, 0.30245), 6.0)
+	_spawn_visual(ramp_glb, Vector3(0, 0, -50), 0.0, 6.0)
+	_spawn_visual(ramp_glb, Vector3(0, 0, 50), PI, 6.0)
 
 
 func _spawn_visual(glb_path: String, world_pos: Vector3, yaw_rad: float, scale_factor: float) -> void:
@@ -404,18 +394,17 @@ func _spawn_start_label() -> void:
 	var label: Label3D = Label3D.new()
 	label.name = "StartGroundLabel"
 	label.text = "START"
-	label.font_size = 256
-	label.outline_size = 24
+	label.font_size = 96
+	label.outline_size = 12
 	label.modulate = Color(1, 0.9, 0.1, 1)
 	label.outline_modulate = Color(0.05, 0.05, 0.05, 1)
 	label.no_depth_test = false
-	label.pixel_size = 0.06
-	# Place the text laying flat on the ground (rotate -90° around X so it reads facing up)
-	# at world (60, 0.06, -10) which is ~3m in front of the start stripe along the racing tangent
-	var b: Basis = Basis().rotated(Vector3.RIGHT, -PI / 2.0)
-	# Then yaw to align with the start line direction
-	b = b.rotated(Vector3.UP, atan2(0.95317, 0.30245))  # rotate to match start tangent
-	label.transform = Transform3D(b, Vector3(60.0, 0.06, -10.0))
+	label.pixel_size = 0.04
+	# Place the text laying flat on the ground, ~5m in front of the start stripe.
+	# Yaw rotation FIRST around Y, then -90° pitch so the text faces up.
+	var b: Basis = Basis(Vector3.UP, atan2(0.95317, 0.30245))
+	b = b.rotated(Vector3.RIGHT, -PI / 2.0)
+	label.transform = Transform3D(b, Vector3(63.0, 0.06, -7.0))
 	add_child(label)
 
 

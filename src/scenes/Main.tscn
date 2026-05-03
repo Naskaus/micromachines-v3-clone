@@ -1,4 +1,4 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=11 format=3]
 
 [ext_resource type="PackedScene" path="res://scenes/Track01.tscn" id="1_track"]
 [ext_resource type="PackedScene" path="res://scenes/Car.tscn" id="2_car"]
@@ -7,6 +7,8 @@
 [ext_resource type="Script" path="res://scripts/race_manager.gd" id="5_race"]
 [ext_resource type="Script" path="res://scripts/minimap.gd" id="6_minimap"]
 [ext_resource type="Script" path="res://scripts/fullscreen_button.gd" id="7_fs"]
+[ext_resource type="Script" path="res://scripts/leaderboard.gd" id="8_lb"]
+[ext_resource type="Script" path="res://scripts/mute_button.gd" id="9_mute"]
 
 [sub_resource type="Environment" id="Env_default"]
 background_mode = 1
@@ -197,6 +199,43 @@ grow_horizontal = 0
 text = "⛶ FULL"
 script = ExtResource("7_fs")
 theme_override_font_sizes/font_size = 18
+
+[node name="MuteSFXButton" type="Button" parent="HUD"]
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -190.0
+offset_top = 12.0
+offset_right = -140.0
+offset_bottom = 50.0
+grow_horizontal = 0
+text = "🔊"
+theme_override_font_sizes/font_size = 18
+script = ExtResource("9_mute")
+metadata/category = "sfx"
+
+[node name="MuteMusicButton" type="Button" parent="HUD"]
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -245.0
+offset_top = 12.0
+offset_right = -195.0
+offset_bottom = 50.0
+grow_horizontal = 0
+text = "🎵"
+theme_override_font_sizes/font_size = 18
+script = ExtResource("9_mute")
+metadata/category = "music"
+
+[node name="Leaderboard" type="Control" parent="HUD"]
+anchors_preset = 0
+offset_left = 12.0
+offset_top = 110.0
+offset_right = 76.0
+offset_bottom = 400.0
+mouse_filter = 2
+script = ExtResource("8_lb")
 
 [node name="RaceManager" type="Node" parent="."]
 script = ExtResource("5_race")
