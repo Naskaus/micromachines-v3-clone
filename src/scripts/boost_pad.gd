@@ -2,8 +2,8 @@ extends Area3D
 
 # Yellow zone on the track. When a car body enters, calls apply_boost on it.
 
-@export var boost_duration: float = 1.2  # short, violent burst
-@export var boost_factor: float = 2.5    # snap from 42 → 105 m/s (halfway between tame and brutal)
+@export var boost_duration: float = 1.2  # short burst
+@export var boost_factor: float = 1.75   # snap from 42 → 73.5 m/s (bots survive, kick still feels arcade)
 
 
 func _ready() -> void:
