@@ -31,7 +31,7 @@ const STEER_TOP_LOSS := 0.15     # at full steer, effective top is reduced by th
 # --- Player catch-up rubber-banding (aggressive — make last-place comeback feel real) ---
 const PLAYER_RUBBER_MAX := 0.80  # +80% top speed boost at max gap
 const PLAYER_RUBBER_DEAD_ZONE := 0.02
-const PLAYER_RUBBER_FULL_GAP := 0.15   # 15% lap behind = max boost — kicks in fast
+const PLAYER_RUBBER_FULL_GAP := 0.10   # 10% lap behind = max boost — kicks in REALLY fast (was 0.15)
 
 # --- Off-track speed malus (track is centerline ± TRACK_HALF_WIDTH) ---
 const OVAL_A := 140.0

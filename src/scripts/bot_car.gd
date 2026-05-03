@@ -41,8 +41,8 @@ const RAYCAST_LENGTH := 7.0           # m — how far ahead we look for obstacle
 const AVOID_STEER_BLEND := 0.7        # 0=ignore obstacles, 1=ignore centerline; blend factor
 
 # Rubber-banding (catch-up / slow-down based on parametric distance to player)
-const RUBBER_MAX := 0.40              # ±40% top-speed adjustment — stronger so leaders slow when player drops back
-const RUBBER_DEAD_ZONE := 0.05        # rad — no adjust within this small angle of player
+const RUBBER_MAX := 0.50              # ±50% top-speed adjustment — leaders brake harder when they pull away
+const RUBBER_DEAD_ZONE := 0.02        # rad ≈ 4m of arc — kicks in almost immediately
 
 var _base_top_speed: float = TOP_SPEED
 var _bot_top_speed: float = TOP_SPEED
