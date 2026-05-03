@@ -146,7 +146,7 @@ mesh = SubResource("Mesh_wall_fb")
 surface_material_override/0 = SubResource("Mat_wall")
 
 [node name="StartStripe" type="MeshInstance3D" parent="."]
-transform = Transform3D(-0.42501, 0.00000, 0.90519, 0.00000, 1.00000, 0.00000, -0.90519, 0.00000, -0.42501, -67.54952, 0.05000, 13.12656)
+transform = Transform3D(0.42501, 0.00000, -0.90519, 0.00000, 1.00000, 0.00000, 0.90519, 0.00000, 0.42501, -67.54952, 0.05000, 13.12656)
 mesh = SubResource("Mesh_start_stripe")
 surface_material_override/0 = SubResource("Mat_start_stripe")
 

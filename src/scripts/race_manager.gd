@@ -48,6 +48,14 @@ var _race_info_label: Label
 var _results_label: Label
 var _speedometer_label: Label
 
+# Cached arch references for dynamic highlight (next-target glow)
+const ARCH_COLOR_NAMES: Array[String] = ["VERTE", "JAUNE", "ORANGE", "ROUGE"]
+const HIGHLIGHT_EMISSION := 4.0  # multiplier on the next arch
+const NORMAL_EMISSION := 1.5     # baseline
+var _arch_nodes: Array[Area3D] = []
+var _arch_meshes: Array = []  # array of arrays — _arch_meshes[i] = [PillarLeft, PillarRight, Crossbar]
+var _last_highlighted_idx: int = -1
+
 
 func _ready() -> void:
 	_menu_label = get_node_or_null(menu_label_path) as Label
@@ -69,10 +77,23 @@ func _ready() -> void:
 			_register_racer(b, b.name, false)
 
 	# Wire 4 arches — lap requires passing them in order (0→1→2→3→0)
+	# Also cache mesh children for dynamic emission tweaks (highlight next arch).
 	for i in range(arch_paths.size()):
 		var arch: Area3D = get_node_or_null(arch_paths[i]) as Area3D
 		if arch:
 			arch.body_entered.connect(_on_arch_entered.bind(i))
+			_arch_nodes.append(arch)
+			var meshes: Array = []
+			for child_name in ["PillarLeft", "PillarRight", "Crossbar"]:
+				var m: MeshInstance3D = arch.get_node_or_null(child_name) as MeshInstance3D
+				if m:
+					# Make material unique per arch so we can tweak emission per arch
+					var mat: StandardMaterial3D = m.get_active_material(0) as StandardMaterial3D
+					if mat:
+						mat = mat.duplicate() as StandardMaterial3D
+						m.set_surface_override_material(0, mat)
+						meshes.append(mat)
+			_arch_meshes.append(meshes)
 		else:
 			push_warning("RaceManager: arch_paths[%d] is missing" % i)
 
@@ -220,6 +241,30 @@ func _process(_delta: float) -> void:
 		_check_eliminations()
 		_update_race_hud()
 		_update_speedometer()
+		_update_arch_highlight()
+
+
+func _update_arch_highlight() -> void:
+	# Highlight P1's next target arch by boosting its emission energy.
+	# Only updates when the target index changes (cheap).
+	if _players.is_empty() or _arch_meshes.is_empty():
+		return
+	var p1: Node = _players[0]
+	if not _racer_data.has(p1):
+		return
+	var data: Dictionary = _racer_data[p1]
+	if data.finished or _eliminated.has(p1):
+		return
+	var target_idx: int = data.next_arch_index
+	if target_idx == _last_highlighted_idx:
+		return
+	# Apply: target gets HIGHLIGHT_EMISSION, others NORMAL_EMISSION.
+	for i in range(_arch_meshes.size()):
+		var energy: float = HIGHLIGHT_EMISSION if i == target_idx else NORMAL_EMISSION
+		for mat in _arch_meshes[i]:
+			if mat is StandardMaterial3D:
+				mat.emission_energy_multiplier = energy
+	_last_highlighted_idx = target_idx
 
 
 func _update_speedometer() -> void:
@@ -434,6 +479,10 @@ func _update_race_hud() -> void:
 					best = lt
 			best_lap_str = "  best %.1fs" % best
 		lines.append("P%d  Tour %d/%d  %s/%d  ⏱ %.1fs%s" % [i + 1, min(d.laps + 1, TOTAL_LAPS), TOTAL_LAPS, _place_label(pos), _racers.size(), current_lap_time, best_lap_str])
+		# Player guidance: next arch to hit
+		var next_idx: int = d.next_arch_index
+		if next_idx >= 0 and next_idx < ARCH_COLOR_NAMES.size():
+			lines.append("       → Prochaine arche : %s" % ARCH_COLOR_NAMES[next_idx])
 	_race_info_label.text = "\n".join(lines)
 
 

@@ -19,7 +19,7 @@ ambient_light_energy = 0.5
 [node name="Track01" parent="." instance=ExtResource("1_track")]
 
 [node name="P1_Red" parent="." instance=ExtResource("2_car")]
-transform = Transform3D(-0.42501, 0.00000, 0.90519, 0.00000, 1.00000, 0.00000, -0.90519, 0.00000, -0.42501, -69.72975, 0.50000, 10.83601)
+transform = Transform3D(0.42501, 0.00000, -0.90519, 0.00000, 1.00000, 0.00000, 0.90519, 0.00000, 0.42501, -69.72975, 0.50000, 10.83601)
 player_id = 1
 hud_label_path = NodePath("../HUD/SpeedLabel")
 spawn_pos = Vector3(-69.72975, 0.5, 10.83601)
@@ -31,7 +31,7 @@ reverse_keycode = 83
 initial_path_phase = 0.94
 
 [node name="P2_Cyan" parent="." instance=ExtResource("2_car")]
-transform = Transform3D(-0.42501, 0.00000, 0.90519, 0.00000, 1.00000, 0.00000, -0.90519, 0.00000, -0.42501, -67.17967, 0.50000, 16.26713)
+transform = Transform3D(0.42501, 0.00000, -0.90519, 0.00000, 1.00000, 0.00000, 0.90519, 0.00000, 0.42501, -67.17967, 0.50000, 16.26713)
 player_id = 2
 spawn_pos = Vector3(-67.17967, 0.5, 16.26713)
 spawn_yaw_deg = 0.0
@@ -42,7 +42,7 @@ reverse_keycode = 75
 initial_path_phase = 0.94
 
 [node name="Bot1_Blue" parent="." instance=ExtResource("3_bot")]
-transform = Transform3D(-0.42501, 0.00000, 0.90519, 0.00000, 1.00000, 0.00000, -0.90519, 0.00000, -0.42501, -74.25569, 0.50000, 12.96108)
+transform = Transform3D(0.42501, 0.00000, -0.90519, 0.00000, 1.00000, 0.00000, 0.90519, 0.00000, 0.42501, -74.25569, 0.50000, 12.96108)
 bot_color = Color(0.2, 0.4, 0.9, 1)
 skill = 0.97
 player_path = NodePath("../P1_Red")
@@ -52,7 +52,7 @@ car_model_path = "res://assets/cars/hatchback-sports.glb"
 initial_path_phase = 0.94
 
 [node name="Bot2_Yellow" parent="." instance=ExtResource("3_bot")]
-transform = Transform3D(-0.42501, 0.00000, 0.90519, 0.00000, 1.00000, 0.00000, -0.90519, 0.00000, -0.42501, -71.70560, 0.50000, 18.39220)
+transform = Transform3D(0.42501, 0.00000, -0.90519, 0.00000, 1.00000, 0.00000, 0.90519, 0.00000, 0.42501, -71.70560, 0.50000, 18.39220)
 bot_color = Color(0.95, 0.78, 0.12, 1)
 skill = 1.00
 player_path = NodePath("../P1_Red")
@@ -62,7 +62,7 @@ car_model_path = "res://assets/cars/kart-oobi.glb"
 initial_path_phase = 0.94
 
 [node name="Bot3_Green" parent="." instance=ExtResource("3_bot")]
-transform = Transform3D(-0.42501, 0.00000, 0.90519, 0.00000, 1.00000, 0.00000, -0.90519, 0.00000, -0.42501, -78.78162, 0.50000, 15.08614)
+transform = Transform3D(0.42501, 0.00000, -0.90519, 0.00000, 1.00000, 0.00000, 0.90519, 0.00000, 0.42501, -78.78162, 0.50000, 15.08614)
 bot_color = Color(0.20, 0.75, 0.30, 1)
 skill = 0.95
 player_path = NodePath("../P1_Red")
@@ -72,7 +72,7 @@ car_model_path = "res://assets/cars/tractor.glb"
 initial_path_phase = 0.94
 
 [node name="Bot4_Purple" parent="." instance=ExtResource("3_bot")]
-transform = Transform3D(-0.42501, 0.00000, 0.90519, 0.00000, 1.00000, 0.00000, -0.90519, 0.00000, -0.42501, -76.23154, 0.50000, 20.51727)
+transform = Transform3D(0.42501, 0.00000, -0.90519, 0.00000, 1.00000, 0.00000, 0.90519, 0.00000, 0.42501, -76.23154, 0.50000, 20.51727)
 bot_color = Color(0.55, 0.20, 0.80, 1)
 skill = 1.03
 player_path = NodePath("../P1_Red")
