@@ -52,6 +52,69 @@ var _player: Node3D = null
 var _boost_until: float = 0.0
 var _boost_factor: float = 1.0
 
+# Particle FX
+var _smoke_left: CPUParticles3D
+var _smoke_right: CPUParticles3D
+var _boost_trail: CPUParticles3D
+
+
+func _make_smoke_emitter(local_offset: Vector3) -> CPUParticles3D:
+	var p: CPUParticles3D = CPUParticles3D.new()
+	p.position = local_offset
+	p.amount = 24
+	p.lifetime = 0.55
+	p.emitting = false
+	p.local_coords = false
+	p.spread = 35.0
+	p.direction = Vector3(0, 0.4, 1)
+	p.initial_velocity_min = 1.5
+	p.initial_velocity_max = 3.5
+	p.gravity = Vector3(0, 0.6, 0)
+	p.scale_amount_min = 0.5
+	p.scale_amount_max = 1.4
+	p.color = Color(0.92, 0.92, 0.92, 0.55)
+	var mesh: SphereMesh = SphereMesh.new()
+	mesh.radius = 0.28
+	mesh.height = 0.56
+	mesh.radial_segments = 6
+	mesh.rings = 3
+	var mat: StandardMaterial3D = StandardMaterial3D.new()
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.albedo_color = Color(0.92, 0.92, 0.92, 0.55)
+	mesh.material = mat
+	p.mesh = mesh
+	return p
+
+
+func _make_boost_emitter(local_offset: Vector3) -> CPUParticles3D:
+	var p: CPUParticles3D = CPUParticles3D.new()
+	p.position = local_offset
+	p.amount = 30
+	p.lifetime = 0.30
+	p.emitting = false
+	p.local_coords = false
+	p.spread = 20.0
+	p.direction = Vector3(0, 0.1, 1)
+	p.initial_velocity_min = 4.0
+	p.initial_velocity_max = 6.5
+	p.gravity = Vector3.ZERO
+	p.scale_amount_min = 0.3
+	p.scale_amount_max = 0.6
+	p.color = Color(1.0, 0.55, 0.10, 0.85)
+	var mesh: SphereMesh = SphereMesh.new()
+	mesh.radius = 0.22
+	mesh.height = 0.44
+	mesh.radial_segments = 6
+	mesh.rings = 3
+	var mat: StandardMaterial3D = StandardMaterial3D.new()
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.albedo_color = Color(1.0, 0.55, 0.10, 0.85)
+	mesh.material = mat
+	p.mesh = mesh
+	return p
+
 
 func apply_boost(duration: float, factor: float) -> void:
 	_boost_until = Time.get_ticks_msec() / 1000.0 + duration
@@ -108,6 +171,13 @@ func _ready() -> void:
 	var mat: StandardMaterial3D = (src_mat.duplicate() if src_mat else StandardMaterial3D.new())
 	mat.albedo_color = bot_color
 	mesh.set_surface_override_material(0, mat)
+	# Particle FX (drift smoke + boost trail)
+	_smoke_left = _make_smoke_emitter(Vector3(-0.45, 0.0, 0.95))
+	_smoke_right = _make_smoke_emitter(Vector3(0.45, 0.0, 0.95))
+	_boost_trail = _make_boost_emitter(Vector3(0.0, 0.05, 1.05))
+	add_child(_smoke_left)
+	add_child(_smoke_right)
+	add_child(_boost_trail)
 
 
 func _physics_process(delta: float) -> void:
@@ -216,3 +286,16 @@ func _physics_process(delta: float) -> void:
 	var grip: float = DRIFT_GRIP if is_hard_turning else LATERAL_GRIP
 	var lateral_correction: Vector3 = -right * lateral_speed * grip * delta
 	apply_central_impulse(lateral_correction * mass)
+
+	# 13. Particle FX
+	var back_dir: Vector3 = -fwd
+	if _smoke_left:
+		_smoke_left.emitting = is_hard_turning
+		_smoke_left.direction = back_dir + Vector3(0, 0.5, 0)
+	if _smoke_right:
+		_smoke_right.emitting = is_hard_turning
+		_smoke_right.direction = back_dir + Vector3(0, 0.5, 0)
+	if _boost_trail:
+		var boost_active: bool = (Time.get_ticks_msec() / 1000.0) < _boost_until
+		_boost_trail.emitting = boost_active
+		_boost_trail.direction = back_dir
