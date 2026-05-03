@@ -122,27 +122,31 @@ func _make_smoke_emitter(local_offset: Vector3) -> CPUParticles3D:
 func _make_boost_emitter(local_offset: Vector3) -> CPUParticles3D:
 	var p: CPUParticles3D = CPUParticles3D.new()
 	p.position = local_offset
-	p.amount = 30
-	p.lifetime = 0.30
+	p.amount = 80              # 30 → 80 (much denser)
+	p.lifetime = 0.45          # 0.30 → 0.45 (longer trail)
 	p.emitting = false
 	p.local_coords = false
-	p.spread = 20.0
-	p.direction = Vector3(0, 0.1, 1)
-	p.initial_velocity_min = 4.0
-	p.initial_velocity_max = 6.5
+	p.spread = 38.0            # 20 → 38° (wider cone of fire)
+	p.direction = Vector3(0, 0.15, 1)
+	p.initial_velocity_min = 7.0   # 4 → 7
+	p.initial_velocity_max = 12.0  # 6.5 → 12 (fast streaks)
 	p.gravity = Vector3.ZERO
-	p.scale_amount_min = 0.3
-	p.scale_amount_max = 0.6
-	p.color = Color(1.0, 0.55, 0.10, 0.85)
+	p.scale_amount_min = 0.6   # 0.3 → 0.6 (bigger)
+	p.scale_amount_max = 1.5   # 0.6 → 1.5 (much bigger)
+	p.color = Color(1.0, 0.45, 0.05, 0.95)
 	var mesh: SphereMesh = SphereMesh.new()
-	mesh.radius = 0.22
-	mesh.height = 0.44
+	mesh.radius = 0.35         # 0.22 → 0.35
+	mesh.height = 0.7          # 0.44 → 0.7
 	mesh.radial_segments = 6
 	mesh.rings = 3
 	var mat: StandardMaterial3D = StandardMaterial3D.new()
 	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mat.albedo_color = Color(1.0, 0.55, 0.10, 0.85)
+	mat.albedo_color = Color(1.0, 0.45, 0.05, 0.95)
+	# Glow for "fire" effect — particles emit light against the dark felt
+	mat.emission_enabled = true
+	mat.emission = Color(1.0, 0.55, 0.15, 1.0)
+	mat.emission_energy_multiplier = 2.5
 	mesh.material = mat
 	p.mesh = mesh
 	return p
