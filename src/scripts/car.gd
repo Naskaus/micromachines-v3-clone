@@ -1,5 +1,7 @@
 extends RigidBody3D
 
+const PathUtils = preload("res://scripts/path_utils.gd")
+
 # Micromachines V3 clone — Car controller
 # Auto-acceleration + 2-button steering. Drift via low lateral friction.
 #
@@ -20,6 +22,7 @@ extends RigidBody3D
 @export var respawn_keycode: int = KEY_R  # which key respawns this car
 @export var reverse_keycode: int = KEY_S  # held to reverse out of a stuck spot
 @export var camera_path: NodePath = NodePath("../Camera3D")  # for shake feedback
+@export var initial_path_phase: float = 0.25  # where on the figure-8 this car starts (0.25 = top of top oval)
 
 # --- Tuning constants (BASELINE V0.3 — slow ramp + steer drag + better drift) ---
 const TOP_SPEED := 42.0          # m/s — cruise speed
@@ -38,8 +41,6 @@ const PLAYER_RUBBER_DEAD_ZONE := 0.02
 const PLAYER_RUBBER_FULL_GAP := 0.10   # 10% lap behind = max boost — kicks in REALLY fast (was 0.15)
 
 # --- Off-track speed malus (track is centerline ± TRACK_HALF_WIDTH) ---
-const OVAL_A := 140.0
-const OVAL_B := 80.0
 const TRACK_HALF_WIDTH := 6.0
 const OFF_TRACK_MALUS := 0.5  # 50% top speed when off the painted track
 
@@ -59,6 +60,7 @@ const REVERSE_FORCE_FACTOR := 0.7  # multiplier on ACCEL when reversing
 
 # --- Race progress (fed from race_manager for catch-up rubber-banding) ---
 var _progress_gap_to_leader: float = 0.0  # >0 means I'm behind leader; updated each frame
+var _path_phase: float = 0.0  # current parametric position on the figure-8 path
 
 
 func set_race_progress_gap(gap: float) -> void:
@@ -73,16 +75,25 @@ func _catch_up_factor() -> float:
 
 
 func _off_track_factor() -> float:
-	# Cheap centerline projection via parametric angle
+	# Distance to closest of the two figure-8 ovals
 	var p: Vector3 = global_position
-	var t: float = atan2(p.z / OVAL_B, p.x / OVAL_A)
-	var center_x: float = OVAL_A * cos(t)
-	var center_z: float = OVAL_B * sin(t)
-	var dx: float = p.x - center_x
-	var dz: float = p.z - center_z
-	if (dx * dx + dz * dz) > (TRACK_HALF_WIDTH * TRACK_HALF_WIDTH):
+	var d_top: float = _dist_to_ellipse_center(p, -PathUtils.OVAL_H)
+	var d_bot: float = _dist_to_ellipse_center(p, PathUtils.OVAL_H)
+	if min(d_top, d_bot) > TRACK_HALF_WIDTH:
 		return OFF_TRACK_MALUS
 	return 1.0
+
+
+func _dist_to_ellipse_center(pos: Vector3, cz: float) -> float:
+	var fx: float = pos.x
+	var fz: float = pos.z - cz
+	var a2: float = PathUtils.OVAL_A * PathUtils.OVAL_A
+	var b2: float = PathUtils.OVAL_B * PathUtils.OVAL_B
+	var f: float = (fx * fx) / a2 + (fz * fz) / b2 - 1.0
+	var gx: float = 2.0 * fx / a2
+	var gz: float = 2.0 * fz / b2
+	var gmag: float = sqrt(gx * gx + gz * gz)
+	return abs(f) / max(gmag, 0.0001)
 
 var _left_action: String
 var _right_action: String
@@ -292,6 +303,7 @@ func _ready() -> void:
 	axis_lock_angular_z = true
 	linear_damp = 0.5
 	angular_damp = 4.0
+	_path_phase = initial_path_phase
 	if hud_label_path and not hud_label_path.is_empty():
 		_hud_label = get_node_or_null(hud_label_path) as Label
 	# Try to load a Kenney .glb model first; fall back to primitive build if missing
@@ -375,6 +387,10 @@ func _physics_process(delta: float) -> void:
 	var grip: float = DRIFT_GRIP if is_hard_turning else LATERAL_GRIP
 	var lateral_correction: Vector3 = -right * lateral_speed * grip * delta
 	apply_central_impulse(lateral_correction * mass)
+
+	# --- Advance path phase based on actual forward speed (used by race_manager for progress + lap)
+	if fwd_speed > 0.0:
+		_path_phase = wrapf(_path_phase + (fwd_speed / PathUtils.PATH_PERIMETER) * delta, 0.0, 1.0)
 
 	# --- PARTICLE FX ---
 	# Direction updated each frame to match car backward in world frame (local_coords = false)

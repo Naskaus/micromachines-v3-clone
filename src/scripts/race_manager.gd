@@ -1,5 +1,7 @@
 extends Node
 
+const PathUtils = preload("res://scripts/path_utils.gd")
+
 # Race orchestrator — countdown → lap counting → win condition → results.
 # Cars are frozen during pre-race + countdown, unfrozen on GO, frozen again on race end.
 # V0.5: supports multiple human players (racers tagged "is_player").
@@ -14,10 +16,7 @@ const MIN_LAP_TIME := 4.0    # debounce — must be < fastest possible lap
 const ELIMINATION_DIST_FROM_LEADER := 120.0  # m — racers beyond this are eliminated
 const LEADER_CHANGE_HYSTERESIS := 0.03  # 3% lap progress buffer to avoid camera flicker
 
-# Must match Track01 oval (used for live position ranking)
-const OVAL_A := 140.0
-const OVAL_B := 80.0
-const START_ANGLE := PI * 0.5  # spawn at south (z=+OVAL_B): atan2(1, 0) = π/2
+# Figure-8 path constants live in PathUtils.gd
 
 enum State { MENU, PRE_RACE, COUNTDOWN, RACING, FINISHED }
 
@@ -68,9 +67,8 @@ func _ready() -> void:
 		if b:
 			_register_racer(b, b.name, false)
 
-	var fl: Area3D = get_node_or_null(finish_line_path) as Area3D
-	if fl:
-		fl.body_entered.connect(_on_finish_line_entered)
+	# FinishLine is now visual-only — lap detection happens via phase-wrap in _check_lap_wraps()
+	pass
 
 	if _results_label:
 		_results_label.visible = false
@@ -95,7 +93,8 @@ func _register_racer(racer: Node, display_name: String, is_player: bool) -> void
 		"is_player": is_player,
 		"laps": 0,
 		"last_lap_time": 0.0,
-		"lap_times": [] as Array[float],  # history of completed lap durations
+		"last_phase": 0.25,  # for phase-wrap lap detection
+		"lap_times": [] as Array[float],
 		"finish_time": 0.0,
 		"finished": false,
 	}
@@ -126,28 +125,37 @@ func _start_race() -> void:
 		_racer_data[r].last_lap_time = _race_start_time
 
 
-func _on_finish_line_entered(body: Node) -> void:
-	if _state != State.RACING:
-		return
-	if not _racer_data.has(body):
-		return
-	var data: Dictionary = _racer_data[body]
-	if data.finished:
-		return
-	if _eliminated.has(body):
-		return
+func _on_finish_line_entered(_body: Node) -> void:
+	# Lap detection is now phase-wrap based (see _check_lap_wraps), this handler is unused
+	pass
+
+
+func _check_lap_wraps() -> void:
+	# Detect phase wrap (>0.85 → <0.15) for each racer to count laps
 	var now: float = Time.get_ticks_msec() / 1000.0
-	if now - data.last_lap_time < MIN_LAP_TIME:
-		return
-	var lap_duration: float = now - data.last_lap_time
-	data.lap_times.append(lap_duration)
-	data.last_lap_time = now
-	data.laps += 1
-	if data.laps >= TOTAL_LAPS:
-		data.finished = true
-		data.finish_time = now - _race_start_time
-		_finish_order.append(body)
-		_check_race_end()
+	for r in _racers:
+		if _eliminated.has(r):
+			continue
+		var data: Dictionary = _racer_data[r]
+		if data.finished:
+			continue
+		if not ("_path_phase" in r):
+			continue
+		var phase: float = r._path_phase
+		var last: float = data.last_phase
+		# Wrap: phase went from end of lap (≥0.85) back to start (≤0.15) — means lap completed
+		if last > 0.85 and phase < 0.15:
+			if now - data.last_lap_time >= MIN_LAP_TIME:
+				var lap_duration: float = now - data.last_lap_time
+				data.lap_times.append(lap_duration)
+				data.last_lap_time = now
+				data.laps += 1
+				if data.laps >= TOTAL_LAPS:
+					data.finished = true
+					data.finish_time = now - _race_start_time
+					_finish_order.append(r)
+					_check_race_end()
+		data.last_phase = phase
 
 
 func _check_race_end() -> void:
@@ -204,6 +212,7 @@ func _process(_delta: float) -> void:
 		return
 	_update_leader_and_camera()
 	if _state == State.RACING:
+		_check_lap_wraps()
 		_feed_progress_gaps_to_players()
 		_check_eliminations()
 		_update_race_hud()
@@ -439,10 +448,21 @@ func _compute_rankings() -> Array:
 
 func _racer_progress(racer: Node) -> float:
 	var laps: float = float(_racer_data[racer].laps)
-	var pos: Vector3 = racer.global_position
-	var angle: float = atan2(pos.z / OVAL_B, pos.x / OVAL_A)
-	var progress_in_lap: float = wrapf((START_ANGLE - angle) / TAU, 0.0, 1.0)
+	# Use racer's own phase if exposed (cars + bots all track _path_phase)
+	# Adjust phase so START position (initial_path_phase = 0.25) maps to 0 progress within a lap
+	var phase: float = 0.0
+	if "_path_phase" in racer:
+		phase = racer._path_phase
+	# Shift so start-of-lap (0.25) = 0 lap-progress
+	var progress_in_lap: float = wrapf(phase - 0.25, 0.0, 1.0)
 	return laps + progress_in_lap
+
+
+# Phase-from-position helper (still useful for HUD widgets)
+func _racer_phase(racer: Node) -> float:
+	if "_path_phase" in racer:
+		return racer._path_phase
+	return PathUtils.phase_from_position(racer.global_position)
 
 
 # Public API for HUD widgets (minimap)
