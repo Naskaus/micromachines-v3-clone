@@ -37,6 +37,16 @@ size = Vector3(280.0, 2.0, 1.0)
 [sub_resource type="BoxMesh" id="Mesh_wall_fb"]
 size = Vector3(280.0, 2.0, 1.0)
 
+[sub_resource type="BoxMesh" id="Mesh_start_stripe"]
+size = Vector3(14.0, 0.05, 1.0)
+
+[sub_resource type="StandardMaterial3D" id="Mat_start_stripe"]
+albedo_color = Color(0.95, 0.95, 0.92, 1)
+emission_enabled = true
+emission = Color(1, 1, 1, 1)
+emission_energy_multiplier = 0.4
+roughness = 0.7
+
 [sub_resource type="BoxShape3D" id="Shape_arch_gate"]
 size = Vector3(12.0, 8.0, 1.0)
 
@@ -134,6 +144,11 @@ shape = SubResource("Shape_wall_fb")
 [node name="MeshInstance3D" type="MeshInstance3D" parent="WallBack"]
 mesh = SubResource("Mesh_wall_fb")
 surface_material_override/0 = SubResource("Mat_wall")
+
+[node name="StartStripe" type="MeshInstance3D" parent="."]
+transform = Transform3D(-0.42501, 0.00000, 0.90519, 0.00000, 1.00000, 0.00000, -0.90519, 0.00000, -0.42501, -67.54952, 0.05000, 13.12656)
+mesh = SubResource("Mesh_start_stripe")
+surface_material_override/0 = SubResource("Mat_start_stripe")
 
 [node name="Arch_1" type="Area3D" parent="."]
 transform = Transform3D(-0.19420, 0.00000, 0.98096, 0.00000, 1.00000, 0.00000, -0.98096, 0.00000, -0.19420, -36.81246, 4.00000, 3.51118)
