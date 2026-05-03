@@ -31,9 +31,8 @@ enum Step { ROOT, CREATE_LOBBY, JOIN_INPUT, JOIN_LOBBY, CONNECTING, ERROR }
 @onready var _btn_create_back: Button = $CreateLobbyPanel/VBox/BtnBack
 @onready var _btn_create_navback: Button = $CreateLobbyPanel/VBox/NavBar/BtnNavBack
 
-@onready var _join_code_input: LineEdit = $JoinInputPanel/VBox/CodeInput
-@onready var _btn_join_confirm: Button = $JoinInputPanel/VBox/HBox/BtnConfirm
-@onready var _btn_join_back: Button = $JoinInputPanel/VBox/HBox/BtnBack
+@onready var _pin_display: Label = $JoinInputPanel/VBox/PinDisplay
+@onready var _numpad: GridContainer = $JoinInputPanel/VBox/NumPad
 @onready var _btn_join_navback: Button = $JoinInputPanel/VBox/NavBar/BtnNavBack
 
 @onready var _join_lobby_code: Label = $JoinLobbyPanel/VBox/CodeLabel
@@ -55,6 +54,7 @@ var _peers: Array = []
 var _race_started: bool = false
 var _orientation_initialized: bool = false
 var _last_was_portrait: bool = false
+var _pin_buffer: String = ""
 
 
 func _ready() -> void:
@@ -80,13 +80,15 @@ func _ready() -> void:
 	_btn_start_race.pressed.connect(_on_start_race_pressed)
 	_btn_create_back.pressed.connect(_on_back_to_root)
 	_btn_create_navback.pressed.connect(_on_back_to_root)
-	_btn_join_confirm.pressed.connect(_on_join_confirm_pressed)
-	_btn_join_back.pressed.connect(_on_back_to_root)
 	_btn_join_navback.pressed.connect(_on_back_to_root)
 	_btn_lobby_leave.pressed.connect(_on_back_to_root)
 	_btn_lobby_navback.pressed.connect(_on_back_to_root)
 	_btn_error_back.pressed.connect(_on_back_to_root)
-	_join_code_input.text_submitted.connect(func(_t): _on_join_confirm_pressed())
+	# Numpad — bind every Button child by its label text. The dispatch table
+	# in _on_numpad_pressed reads the button text and decides what to do.
+	for child in _numpad.get_children():
+		if child is Button:
+			(child as Button).pressed.connect(_on_numpad_pressed.bind(child.text))
 
 	if NetworkClient:
 		NetworkClient.connected.connect(_on_net_connected)
@@ -191,24 +193,73 @@ func _on_create_pressed() -> void:
 
 
 func _on_join_pressed() -> void:
-	_join_code_input.text = ""
+	# Reset the in-game numpad's typed buffer and refresh the display.
+	# No OS keyboard required — Seb's testers can tap digits on screen on
+	# any device, and desktop users still get keyboard support via _input.
+	_pin_buffer = ""
+	_update_pin_display()
 	_show_panel(Step.JOIN_INPUT)
-	# Two frames: one for visibility flip, one for the LineEdit to be ready.
-	# Without this, grab_focus() silently no-ops on the freshly-shown control.
-	await get_tree().process_frame
-	await get_tree().process_frame
-	_join_code_input.editable = true
-	_join_code_input.grab_focus()
+
+
+func _on_numpad_pressed(text: String) -> void:
+	if text == "EFF.":
+		if _pin_buffer.length() > 0:
+			_pin_buffer = _pin_buffer.substr(0, _pin_buffer.length() - 1)
+	elif text == "OK":
+		_on_join_confirm_pressed()
+		return
+	else:
+		# Single-digit press. Append while there's room (max 4).
+		if text.length() == 1 and text >= "0" and text <= "9":
+			if _pin_buffer.length() < 4:
+				_pin_buffer += text
+	_update_pin_display()
+
+
+func _update_pin_display() -> void:
+	if _pin_display == null:
+		return
+	# Render four slots: typed digits + dot placeholders for empty slots.
+	# Wide spacing makes the four positions feel like distinct boxes.
+	var parts: Array[String] = []
+	for i in range(4):
+		if i < _pin_buffer.length():
+			parts.append(_pin_buffer[i])
+		else:
+			parts.append("·")
+	_pin_display.text = "   ".join(parts)
+
+
+func _input(event: InputEvent) -> void:
+	# Desktop keyboard support for the numpad. Only active while the JOIN
+	# panel is visible; otherwise we don't intercept anything (so the rest
+	# of the menu still works via mouse / touch / button focus).
+	if not visible:
+		return
+	if _join_input_panel == null or not _join_input_panel.visible:
+		return
+	if not (event is InputEventKey):
+		return
+	if not event.pressed or event.echo:
+		return
+	var k: int = event.keycode
+	var dispatch: String = ""
+	if k >= KEY_0 and k <= KEY_9:
+		dispatch = str(k - KEY_0)
+	elif k >= KEY_KP_0 and k <= KEY_KP_9:
+		dispatch = str(k - KEY_KP_0)
+	elif k == KEY_BACKSPACE:
+		dispatch = "EFF."
+	elif k == KEY_ENTER or k == KEY_KP_ENTER:
+		dispatch = "OK"
+	if dispatch != "":
+		_on_numpad_pressed(dispatch)
+		get_viewport().set_input_as_handled()
 
 
 func _on_join_confirm_pressed() -> void:
-	# Sanitize on submit only (strip whitespace, keep 0-9).
-	# v0.18.0: 4-digit PIN (matches server) so mobile shows numeric keypad.
-	var raw: String = _join_code_input.text.strip_edges()
-	var code: String = ""
-	for c in raw:
-		if c >= "0" and c <= "9":
-			code += c
+	# v0.18.1: PIN comes from the in-game numpad's _pin_buffer.
+	var code: String = _pin_buffer
 	if code.length() != 4:
 		_show_error("Le code doit faire 4 chiffres.")
 		return
@@ -260,7 +311,9 @@ func _on_back_to_root() -> void:
 	_room_code = ""
 	_is_host = false
 	_peers.clear()
-	_join_code_input.text = ""  # don't carry stale input back to root
+	_pin_buffer = ""
+	if _pin_display != null:
+		_update_pin_display()
 	_set_connection_status("offline")
 	_show_panel(Step.ROOT)
 
@@ -268,7 +321,8 @@ func _on_back_to_root() -> void:
 func _show_error(msg: String) -> void:
 	_error_label.text = msg
 	# Clear any stale typed code so the next "Rejoindre" attempt starts blank.
-	_join_code_input.text = ""
+	_pin_buffer = ""
+	_update_pin_display()
 	_show_panel(Step.ERROR)
 
 

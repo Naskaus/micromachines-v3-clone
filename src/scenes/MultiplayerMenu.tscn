@@ -497,9 +497,9 @@ anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
 offset_left = -300.0
-offset_top = -290.0
+offset_top = -355.0
 offset_right = 300.0
-offset_bottom = 290.0
+offset_bottom = 355.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_styles/panel = SubResource("SBF_card")
@@ -562,43 +562,192 @@ horizontal_alignment = 1
 theme_override_colors/font_color = Color(0.55, 0.55, 0.55, 1)
 theme_override_font_sizes/font_size = 11
 
-[node name="CodeInput" type="LineEdit" parent="JoinInputPanel/VBox"]
-custom_minimum_size = Vector2(0, 120)
+[node name="PinDisplay" type="Label" parent="JoinInputPanel/VBox"]
+custom_minimum_size = Vector2(0, 96)
 layout_mode = 2
-mouse_default_cursor_shape = 1
-placeholder_text = "1234"
-alignment = 1
-max_length = 4
-editable = true
-selecting_enabled = true
-virtual_keyboard_type = 2
-caret_blink = true
-caret_blink_interval = 0.6
-theme_override_styles/normal = SubResource("SBF_input")
-theme_override_styles/focus = SubResource("SBF_input_focus")
-theme_override_styles/read_only = SubResource("SBF_input")
-theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_colors/font_placeholder_color = Color(0.30, 0.30, 0.30, 1)
-theme_override_colors/font_selected_color = Color(1, 1, 1, 1)
-theme_override_colors/selection_color = Color(0.880, 0.024, 0.000, 1)
-theme_override_colors/caret_color = Color(0.880, 0.024, 0.000, 1)
-theme_override_font_sizes/font_size = 64
-
-[node name="HintLabel" type="Label" parent="JoinInputPanel/VBox"]
-layout_mode = 2
-text = "Code à 4 chiffres, partagé par l'hôte."
+text = "·   ·   ·   ·"
 horizontal_alignment = 1
-theme_override_colors/font_color = Color(0.55, 0.55, 0.55, 1)
-theme_override_font_sizes/font_size = 13
+vertical_alignment = 1
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_fonts/font = ExtResource("5_font_impact")
+theme_override_font_sizes/font_size = 80
 
-[node name="HBox" type="VBoxContainer" parent="JoinInputPanel/VBox"]
+[node name="NumPad" type="GridContainer" parent="JoinInputPanel/VBox"]
 layout_mode = 2
-theme_override_constants/separation = 10
+size_flags_horizontal = 4
+columns = 3
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
 
-[node name="BtnConfirm" type="Button" parent="JoinInputPanel/VBox/HBox"]
-custom_minimum_size = Vector2(0, 80)
+[node name="Btn1" type="Button" parent="JoinInputPanel/VBox/NumPad"]
+custom_minimum_size = Vector2(160, 76)
 layout_mode = 2
-text = "Rejoindre"
+text = "1"
+theme_override_styles/normal = SubResource("SBF_btn_default")
+theme_override_styles/hover = SubResource("SBF_btn_default_hover")
+theme_override_styles/pressed = SubResource("SBF_btn_default_hover")
+theme_override_styles/focus = SubResource("SBF_btn_default_hover")
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_colors/font_pressed_color = Color(1, 1, 1, 1)
+theme_override_colors/font_focus_color = Color(1, 1, 1, 1)
+theme_override_fonts/font = ExtResource("5_font_impact")
+theme_override_font_sizes/font_size = 36
+
+[node name="Btn2" type="Button" parent="JoinInputPanel/VBox/NumPad"]
+custom_minimum_size = Vector2(160, 76)
+layout_mode = 2
+text = "2"
+theme_override_styles/normal = SubResource("SBF_btn_default")
+theme_override_styles/hover = SubResource("SBF_btn_default_hover")
+theme_override_styles/pressed = SubResource("SBF_btn_default_hover")
+theme_override_styles/focus = SubResource("SBF_btn_default_hover")
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_colors/font_pressed_color = Color(1, 1, 1, 1)
+theme_override_colors/font_focus_color = Color(1, 1, 1, 1)
+theme_override_fonts/font = ExtResource("5_font_impact")
+theme_override_font_sizes/font_size = 36
+
+[node name="Btn3" type="Button" parent="JoinInputPanel/VBox/NumPad"]
+custom_minimum_size = Vector2(160, 76)
+layout_mode = 2
+text = "3"
+theme_override_styles/normal = SubResource("SBF_btn_default")
+theme_override_styles/hover = SubResource("SBF_btn_default_hover")
+theme_override_styles/pressed = SubResource("SBF_btn_default_hover")
+theme_override_styles/focus = SubResource("SBF_btn_default_hover")
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_colors/font_pressed_color = Color(1, 1, 1, 1)
+theme_override_colors/font_focus_color = Color(1, 1, 1, 1)
+theme_override_fonts/font = ExtResource("5_font_impact")
+theme_override_font_sizes/font_size = 36
+
+[node name="Btn4" type="Button" parent="JoinInputPanel/VBox/NumPad"]
+custom_minimum_size = Vector2(160, 76)
+layout_mode = 2
+text = "4"
+theme_override_styles/normal = SubResource("SBF_btn_default")
+theme_override_styles/hover = SubResource("SBF_btn_default_hover")
+theme_override_styles/pressed = SubResource("SBF_btn_default_hover")
+theme_override_styles/focus = SubResource("SBF_btn_default_hover")
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_colors/font_pressed_color = Color(1, 1, 1, 1)
+theme_override_colors/font_focus_color = Color(1, 1, 1, 1)
+theme_override_fonts/font = ExtResource("5_font_impact")
+theme_override_font_sizes/font_size = 36
+
+[node name="Btn5" type="Button" parent="JoinInputPanel/VBox/NumPad"]
+custom_minimum_size = Vector2(160, 76)
+layout_mode = 2
+text = "5"
+theme_override_styles/normal = SubResource("SBF_btn_default")
+theme_override_styles/hover = SubResource("SBF_btn_default_hover")
+theme_override_styles/pressed = SubResource("SBF_btn_default_hover")
+theme_override_styles/focus = SubResource("SBF_btn_default_hover")
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_colors/font_pressed_color = Color(1, 1, 1, 1)
+theme_override_colors/font_focus_color = Color(1, 1, 1, 1)
+theme_override_fonts/font = ExtResource("5_font_impact")
+theme_override_font_sizes/font_size = 36
+
+[node name="Btn6" type="Button" parent="JoinInputPanel/VBox/NumPad"]
+custom_minimum_size = Vector2(160, 76)
+layout_mode = 2
+text = "6"
+theme_override_styles/normal = SubResource("SBF_btn_default")
+theme_override_styles/hover = SubResource("SBF_btn_default_hover")
+theme_override_styles/pressed = SubResource("SBF_btn_default_hover")
+theme_override_styles/focus = SubResource("SBF_btn_default_hover")
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_colors/font_pressed_color = Color(1, 1, 1, 1)
+theme_override_colors/font_focus_color = Color(1, 1, 1, 1)
+theme_override_fonts/font = ExtResource("5_font_impact")
+theme_override_font_sizes/font_size = 36
+
+[node name="Btn7" type="Button" parent="JoinInputPanel/VBox/NumPad"]
+custom_minimum_size = Vector2(160, 76)
+layout_mode = 2
+text = "7"
+theme_override_styles/normal = SubResource("SBF_btn_default")
+theme_override_styles/hover = SubResource("SBF_btn_default_hover")
+theme_override_styles/pressed = SubResource("SBF_btn_default_hover")
+theme_override_styles/focus = SubResource("SBF_btn_default_hover")
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_colors/font_pressed_color = Color(1, 1, 1, 1)
+theme_override_colors/font_focus_color = Color(1, 1, 1, 1)
+theme_override_fonts/font = ExtResource("5_font_impact")
+theme_override_font_sizes/font_size = 36
+
+[node name="Btn8" type="Button" parent="JoinInputPanel/VBox/NumPad"]
+custom_minimum_size = Vector2(160, 76)
+layout_mode = 2
+text = "8"
+theme_override_styles/normal = SubResource("SBF_btn_default")
+theme_override_styles/hover = SubResource("SBF_btn_default_hover")
+theme_override_styles/pressed = SubResource("SBF_btn_default_hover")
+theme_override_styles/focus = SubResource("SBF_btn_default_hover")
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_colors/font_pressed_color = Color(1, 1, 1, 1)
+theme_override_colors/font_focus_color = Color(1, 1, 1, 1)
+theme_override_fonts/font = ExtResource("5_font_impact")
+theme_override_font_sizes/font_size = 36
+
+[node name="Btn9" type="Button" parent="JoinInputPanel/VBox/NumPad"]
+custom_minimum_size = Vector2(160, 76)
+layout_mode = 2
+text = "9"
+theme_override_styles/normal = SubResource("SBF_btn_default")
+theme_override_styles/hover = SubResource("SBF_btn_default_hover")
+theme_override_styles/pressed = SubResource("SBF_btn_default_hover")
+theme_override_styles/focus = SubResource("SBF_btn_default_hover")
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_colors/font_pressed_color = Color(1, 1, 1, 1)
+theme_override_colors/font_focus_color = Color(1, 1, 1, 1)
+theme_override_fonts/font = ExtResource("5_font_impact")
+theme_override_font_sizes/font_size = 36
+
+[node name="BtnClear" type="Button" parent="JoinInputPanel/VBox/NumPad"]
+custom_minimum_size = Vector2(160, 76)
+layout_mode = 2
+text = "EFF."
+theme_override_styles/normal = SubResource("SBF_btn_nav")
+theme_override_styles/hover = SubResource("SBF_btn_nav_hover")
+theme_override_styles/pressed = SubResource("SBF_btn_nav_hover")
+theme_override_styles/focus = SubResource("SBF_btn_nav_hover")
+theme_override_colors/font_color = Color(0.65, 0.65, 0.65, 1)
+theme_override_colors/font_hover_color = Color(0.880, 0.024, 0.000, 1)
+theme_override_colors/font_pressed_color = Color(0.880, 0.024, 0.000, 1)
+theme_override_colors/font_focus_color = Color(0.65, 0.65, 0.65, 1)
+theme_override_fonts/font = ExtResource("5_font_impact")
+theme_override_font_sizes/font_size = 24
+
+[node name="Btn0" type="Button" parent="JoinInputPanel/VBox/NumPad"]
+custom_minimum_size = Vector2(160, 76)
+layout_mode = 2
+text = "0"
+theme_override_styles/normal = SubResource("SBF_btn_default")
+theme_override_styles/hover = SubResource("SBF_btn_default_hover")
+theme_override_styles/pressed = SubResource("SBF_btn_default_hover")
+theme_override_styles/focus = SubResource("SBF_btn_default_hover")
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_colors/font_pressed_color = Color(1, 1, 1, 1)
+theme_override_colors/font_focus_color = Color(1, 1, 1, 1)
+theme_override_fonts/font = ExtResource("5_font_impact")
+theme_override_font_sizes/font_size = 36
+
+[node name="BtnSubmit" type="Button" parent="JoinInputPanel/VBox/NumPad"]
+custom_minimum_size = Vector2(160, 76)
+layout_mode = 2
+text = "OK"
 theme_override_styles/normal = SubResource("SBF_btn_primary")
 theme_override_styles/hover = SubResource("SBF_btn_primary_hover")
 theme_override_styles/pressed = SubResource("SBF_btn_primary_hover")
@@ -607,23 +756,16 @@ theme_override_colors/font_color = Color(1, 1, 1, 1)
 theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
 theme_override_colors/font_pressed_color = Color(1, 1, 1, 1)
 theme_override_colors/font_focus_color = Color(1, 1, 1, 1)
-theme_override_font_sizes/font_size = 19
+theme_override_fonts/font = ExtResource("5_font_impact")
+theme_override_font_sizes/font_size = 32
 
-[node name="BtnBack" type="Button" parent="JoinInputPanel/VBox/HBox"]
-custom_minimum_size = Vector2(0, 44)
+[node name="HintLabel" type="Label" parent="JoinInputPanel/VBox"]
 layout_mode = 2
-flat = true
-text = "Annuler"
-alignment = 1
-theme_override_styles/normal = SubResource("SBE_text")
-theme_override_styles/hover = SubResource("SBE_text")
-theme_override_styles/pressed = SubResource("SBE_text")
-theme_override_styles/focus = SubResource("SBE_text")
+text = "Code à 4 chiffres, partagé par l'hôte."
+horizontal_alignment = 1
 theme_override_colors/font_color = Color(0.55, 0.55, 0.55, 1)
-theme_override_colors/font_hover_color = Color(0.880, 0.024, 0.000, 1)
-theme_override_colors/font_pressed_color = Color(0.880, 0.024, 0.000, 1)
-theme_override_colors/font_focus_color = Color(0.55, 0.55, 0.55, 1)
-theme_override_font_sizes/font_size = 14
+theme_override_font_sizes/font_size = 13
+
 
 [node name="JoinLobbyPanel" type="Panel" parent="."]
 visible = false
