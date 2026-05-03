@@ -382,8 +382,17 @@ func _physics_process(delta: float) -> void:
 	var lateral_correction: Vector3 = -right * lateral_speed * grip * delta
 	apply_central_impulse(lateral_correction * mass)
 
-	# 13. Re-anchor _path_phase to actual position each frame (no drift, no false lap detection)
-	_path_phase = PathUtils.phase_from_position(pos)
+	# 13. Re-anchor _path_phase — but reject suspect oval-flips near the crossing.
+	#     phase_from_position picks closest oval; near crossing, a side-offset bot can be misclassified.
+	#     If the proposed phase jumps > 10% of the lap from the previous phase, fall back to forward-integration.
+	var proposed_phase: float = PathUtils.phase_from_position(pos)
+	var phase_delta: float = abs(wrapf(proposed_phase - _path_phase, -0.5, 0.5))
+	if phase_delta < 0.1:
+		_path_phase = proposed_phase
+	else:
+		var path_speed: float = max(0.0, fwd_speed)  # m/s along forward
+		var phase_advance: float = (path_speed * delta) / PathUtils.PATH_PERIMETER
+		_path_phase = wrapf(_path_phase + phase_advance, 0.0, 1.0)
 
 	# 14. Particle FX
 	var back_dir: Vector3 = -fwd

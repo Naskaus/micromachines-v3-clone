@@ -390,7 +390,15 @@ func _physics_process(delta: float) -> void:
 	apply_central_impulse(lateral_correction * mass)
 
 	# --- Re-anchor _path_phase to actual position each frame
-	_path_phase = PathUtils.phase_from_position(global_position)
+	# Reject oval-flips near crossing (same fix as bot_car.gd) — preserves correct ranking.
+	var proposed_phase: float = PathUtils.phase_from_position(global_position)
+	var phase_delta: float = abs(wrapf(proposed_phase - _path_phase, -0.5, 0.5))
+	if phase_delta < 0.1:
+		_path_phase = proposed_phase
+	else:
+		var path_speed: float = max(0.0, fwd_speed)
+		var phase_advance: float = (path_speed * delta) / PathUtils.PATH_PERIMETER
+		_path_phase = wrapf(_path_phase + phase_advance, 0.0, 1.0)
 
 	# --- PARTICLE FX ---
 	# Direction updated each frame to match car backward in world frame (local_coords = false)
