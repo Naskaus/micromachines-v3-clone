@@ -79,9 +79,23 @@ func _build_car_visual_from_glb() -> bool:
 	inst.name = "CarModel"
 	add_child(inst)
 	if inst is Node3D:
-		(inst as Node3D).position = Vector3(0, car_model_y_offset, 0)
-		(inst as Node3D).scale = Vector3(car_model_scale, car_model_scale, car_model_scale)
+		var n3d: Node3D = inst as Node3D
+		n3d.position = Vector3(0, car_model_y_offset, 0)
+		n3d.scale = Vector3(car_model_scale, car_model_scale, car_model_scale)
+		n3d.rotation_degrees = Vector3(0, 180, 0)
+	_tint_car_meshes(inst, bot_color)
 	return true
+
+
+func _tint_car_meshes(node: Node, color: Color) -> void:
+	if node is MeshInstance3D:
+		var mat: StandardMaterial3D = StandardMaterial3D.new()
+		mat.albedo_color = color
+		mat.roughness = 0.55
+		mat.metallic = 0.15
+		(node as MeshInstance3D).material_override = mat
+	for child in node.get_children():
+		_tint_car_meshes(child, color)
 
 
 func _build_car_visual(body_color: Color) -> void:
