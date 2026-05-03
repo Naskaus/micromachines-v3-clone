@@ -53,6 +53,8 @@ var _is_host: bool = false
 var _room_code: String = ""
 var _peers: Array = []
 var _race_started: bool = false
+var _orientation_initialized: bool = false
+var _last_was_portrait: bool = false
 
 
 func _ready() -> void:
@@ -63,7 +65,16 @@ func _ready() -> void:
 	_btn_quit.pressed.connect(_on_quit_pressed)
 	# Orientation watch (mobile portrait → show overlay)
 	get_viewport().size_changed.connect(_check_orientation)
-	_check_orientation()
+	# Belt-and-braces: a 0.4s ticker catches edge cases where size_changed
+	# never fires on mobile web (some browsers don't dispatch it on the
+	# initial canvas → window resize), and re-checks if the user rotates.
+	var orient_timer: Timer = Timer.new()
+	orient_timer.wait_time = 0.4
+	orient_timer.autostart = true
+	orient_timer.timeout.connect(_check_orientation)
+	add_child(orient_timer)
+	# Defer the first check so the HTML5 canvas has time to match the window.
+	call_deferred("_check_orientation")
 	_animate_orientation_icon()
 	_btn_copy_code.pressed.connect(_on_copy_code)
 	_btn_start_race.pressed.connect(_on_start_race_pressed)
@@ -127,14 +138,34 @@ func _on_quit_pressed() -> void:
 		get_tree().quit()
 
 
+func _get_browser_size() -> Vector2:
+	# On web, ask the browser directly for window inner dimensions. Godot's
+	# viewport size lags during the initial mobile canvas resize and mis-reports
+	# the orientation, so we read window.innerWidth/innerHeight as the source
+	# of truth and fall back to the viewport for native builds.
+	if OS.has_feature("web"):
+		var w_raw: String = str(JavaScriptBridge.eval("window.innerWidth", true))
+		var h_raw: String = str(JavaScriptBridge.eval("window.innerHeight", true))
+		var w: float = w_raw.to_float()
+		var h: float = h_raw.to_float()
+		if w > 0 and h > 0:
+			return Vector2(w, h)
+	return Vector2(get_viewport().get_visible_rect().size)
+
+
 func _check_orientation() -> void:
 	if _orientation_overlay == null:
 		return
-	var sz: Vector2 = get_viewport().get_visible_rect().size
-	# Show the rotate-your-phone overlay when the viewport is taller than wide.
-	# Threshold uses a small landscape bias (1.05) so a near-square window
-	# doesn't keep flickering the overlay at every resize event.
-	var portrait: bool = sz.y > sz.x * 1.05
+	var sz: Vector2 = _get_browser_size()
+	var portrait: bool = sz.y > sz.x
+	# When the user actually flips from portrait to landscape, also request
+	# fullscreen — turning the phone is itself a strong "I'm playing now"
+	# signal, and most mobile browsers honor a fullscreen request that follows
+	# an orientationchange event.
+	if _orientation_initialized and _last_was_portrait and not portrait:
+		_request_fullscreen()
+	_orientation_initialized = true
+	_last_was_portrait = portrait
 	_orientation_overlay.visible = portrait
 
 
