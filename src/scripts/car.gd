@@ -115,8 +115,26 @@ func _build_car_visual_from_glb() -> bool:
 		n3d.scale = Vector3(car_model_scale, car_model_scale, car_model_scale)
 		# Kenney models face +Z by default; flip 180° so forward matches our -Z convention
 		n3d.rotation_degrees = Vector3(0, 180, 0)
-	# Keep Kenney's native materials — each model has its own multi-color paint job
+	# Godot loses the GLB's external texture reference on import — re-attach Kenney's colormap atlas
+	# Each mesh's UVs already point to the correct color block in the atlas
+	var colormap: Texture2D = load("res://assets/cars/Textures/colormap.png") as Texture2D
+	if colormap:
+		_apply_colormap_to_meshes(inst, colormap)
 	return true
+
+
+func _apply_colormap_to_meshes(node: Node, tex: Texture2D) -> void:
+	if node is MeshInstance3D:
+		var mi: MeshInstance3D = node as MeshInstance3D
+		var sc: int = (mi.mesh.get_surface_count() if mi.mesh else 0)
+		for i in range(sc):
+			var src: Material = mi.get_active_material(i)
+			var mat: StandardMaterial3D = (src.duplicate() as StandardMaterial3D) if src is StandardMaterial3D else StandardMaterial3D.new()
+			mat.albedo_texture = tex
+			mat.albedo_color = Color.WHITE
+			mi.set_surface_override_material(i, mat)
+	for child in node.get_children():
+		_apply_colormap_to_meshes(child, tex)
 
 
 func _build_car_visual(body_color: Color) -> void:
