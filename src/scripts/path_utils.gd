@@ -15,6 +15,28 @@ const TRACK_HALF_WIDTH := 6.0
 # One full lap perimeter (rough Ramanujan approximation × 2 ovals)
 const PATH_PERIMETER: float = 2.0 * 235.6  # ≈ 471 m
 
+# Bridge over the crossing — first traversal of crossing per lap goes OVER, Y rises.
+const BRIDGE_PHASE_START := 0.95   # ramp-up begins
+const BRIDGE_PHASE_END   := 0.05   # ramp-down ends (wraps past 0)
+const BRIDGE_HEIGHT      := 5.0    # peak Y in metres at phase=0
+
+
+# Returns Y offset due to the bridge over the crossing.
+# Smooth half-cosine ramp from 0 at phase=0.95 → BRIDGE_HEIGHT at phase=0.0 → 0 at phase=0.05.
+static func bridge_y(phase: float) -> float:
+	phase = wrapf(phase, 0.0, 1.0)
+	var in_window: bool = phase >= BRIDGE_PHASE_START or phase <= BRIDGE_PHASE_END
+	if not in_window:
+		return 0.0
+	# Map phase to t ∈ [0, 1] across the bridge window
+	var t: float
+	if phase >= BRIDGE_PHASE_START:
+		t = (phase - BRIDGE_PHASE_START) / (1.0 - BRIDGE_PHASE_START + BRIDGE_PHASE_END)
+	else:
+		t = (1.0 - BRIDGE_PHASE_START + phase) / (1.0 - BRIDGE_PHASE_START + BRIDGE_PHASE_END)
+	# Half-cosine: 0 → 1 → 0
+	return BRIDGE_HEIGHT * 0.5 * (1.0 - cos(t * TAU))
+
 
 # Returns the world position on the figure-8 racing line at parametric phase [0, 1).
 static func path_at(phase: float) -> Vector3:
@@ -23,7 +45,7 @@ static func path_at(phase: float) -> Vector3:
 		# Top oval CCW from south (crossing is at phase=0)
 		var t: float = phase / 0.5
 		var angle: float = PI * 0.5 - t * TAU
-		return Vector3(OVAL_A * cos(angle), 0.0, -OVAL_H + OVAL_B * sin(angle))
+		return Vector3(OVAL_A * cos(angle), bridge_y(phase), -OVAL_H + OVAL_B * sin(angle))
 	else:
 		# Bottom oval CW from north (crossing is at phase=0.5)
 		var t: float = (phase - 0.5) / 0.5
