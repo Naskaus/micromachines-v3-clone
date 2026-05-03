@@ -1,0 +1,47 @@
+{
+  "name": "Picnic Plaid",
+  "description": "Variant: red-tinted plaid table, fewer decor, faster ramp. (Variant only — same geometry as default for now.)",
+  "version": "0.16.2",
+  "track_geometry": {
+    "type": "figure_8",
+    "oval_a": 100.0,
+    "oval_b": 50.0,
+    "oval_h": 50.0
+  },
+  "arches": [
+    {"phase": 0.10, "color": "green",  "label": "VERTE"},
+    {"phase": 0.25, "color": "yellow", "label": "JAUNE"},
+    {"phase": 0.40, "color": "orange", "label": "ORANGE"},
+    {"phase": 0.60, "color": "cyan",   "label": "CYAN"},
+    {"phase": 0.75, "color": "red",    "label": "ROUGE"},
+    {"phase": 0.90, "color": "purple", "label": "VIOLETTE"}
+  ],
+  "ramps": [
+    {"phase": 0.475, "tilt_deg": 28.0, "length": 8.0, "width": 12.0, "buried_y": -0.5}
+  ],
+  "boost_pads": [
+    {"phase": 0.452, "factor": 1.4, "duration": 1.5}
+  ],
+  "spawn": {
+    "phase": 0.05,
+    "grid_rows": 3,
+    "grid_cols": 2,
+    "row_spacing": 5.0,
+    "col_spacing": 3.0
+  },
+  "decor": {
+    "interior_count": 30,
+    "exterior_count": 80,
+    "scale": 14.0,
+    "seed": 99,
+    "items": ["banana", "coin-gold", "cone"],
+    "weights": [2, 3, 2]
+  },
+  "ambience": {
+    "felt_color": [0.65, 0.15, 0.15],
+    "felt_dark": [0.45, 0.10, 0.10],
+    "paint_color": [1.0, 1.0, 0.85],
+    "wall_color": [0.30, 0.20, 0.15]
+  },
+  "music": "race"
+}

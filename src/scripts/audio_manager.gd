@@ -17,6 +17,8 @@ const SFX_PATHS := {
 	# Crashes
 	"hit_light": "res://assets/audio/hit1.ogg",
 	"hit_heavy": "res://assets/audio/explosion1.ogg",
+	# Drift / skid
+	"skid": "res://assets/audio/skid.ogg",
 }
 
 const ENGINE_PATH := "res://assets/audio/engine3.ogg"

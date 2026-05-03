@@ -61,6 +61,7 @@ const REVERSE_FORCE_FACTOR := 0.7  # multiplier on ACCEL when reversing
 # --- Race progress (fed from race_manager for catch-up rubber-banding) ---
 var _progress_gap_to_leader: float = 0.0  # >0 means I'm behind leader; updated each frame
 var _path_phase: float = 0.0  # current parametric position on the figure-8 path
+var _was_drifting: bool = false  # for skid SFX edge detection
 
 
 func set_race_progress_gap(gap: float) -> void:
@@ -393,6 +394,12 @@ func _physics_process(delta: float) -> void:
 	if is_hard_turning:
 		turn_rate *= TURN_RATE_DRIFT_BONUS
 	angular_velocity.y = steer_input * turn_rate
+
+	# Skid SFX on drift edge — only P1, only when entering drift
+	if player_id == 1 and AudioManager:
+		if is_hard_turning and not _was_drifting:
+			AudioManager.play("skid", -8.0, 1.0)
+		_was_drifting = is_hard_turning
 
 	# --- DRIFT / GRIP --- (is_hard_turning already computed above)
 	var grip: float = DRIFT_GRIP if is_hard_turning else LATERAL_GRIP

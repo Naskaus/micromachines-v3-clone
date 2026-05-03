@@ -11,10 +11,20 @@ const TOY_COIN_SILVER := "res://assets/toy_kit/item-coin-silver.glb"
 const TOY_CONE := "res://assets/toy_kit/item-cone.glb"
 const TOY_BOX := "res://assets/toy_kit/item-box.glb"
 
+const FOOD_GLBS: Array = [
+	"res://assets/food_kit/donut-sprinkles.glb",
+	"res://assets/food_kit/sandwich.glb",
+	"res://assets/food_kit/cake-birthday.glb",
+	"res://assets/food_kit/pizza.glb",
+	"res://assets/food_kit/cookie-chocolate.glb",
+	"res://assets/food_kit/apple.glb",
+]
+
 const FLAG_GLB := "res://assets/track_pieces/flagCheckers.glb"
 const PYLON_GLB := "res://assets/track_pieces/pylon.glb"
 
 const SCALE_TOY := 12.0
+const SCALE_FOOD := 14.0
 const SCALE_FLAG := 18.0
 const SCALE_PYLON := 10.0
 
@@ -302,7 +312,14 @@ var ALL_ITEMS: Array = [
 
 
 func _ready() -> void:
+	# Cull ~55% of decor on mobile/web platforms for performance
+	var is_low_perf: bool = OS.has_feature("mobile") or OS.has_feature("web")
+	var skip_n: int = 2 if is_low_perf else 1  # keep every Nth item on low-perf
+	var i: int = 0
 	for entry in ALL_ITEMS:
+		i += 1
+		if is_low_perf and (i % skip_n) != 0:
+			continue
 		var key: String = entry[0]
 		var pos: Vector3 = entry[1]
 		var yaw: float = entry[2]
@@ -320,6 +337,86 @@ func _ready() -> void:
 	_spawn_collidable(PYLON_GLB, Vector3(-112.79625, 0.0, -53.54827), 0.0, SCALE_PYLON)
 	_spawn_collidable(PYLON_GLB, Vector3(112.79625, 0.0, 53.54827), 0.0, SCALE_PYLON)
 	_spawn_collidable(PYLON_GLB, Vector3(-112.79625, 0.0, 53.54827), 0.0, SCALE_PYLON)
+
+	# Giant food items scattered around the perimeter — picnic-on-pool-table vibe
+	_spawn_food_scatter()
+
+	# Painted "START" text on the ground at the start line
+	_spawn_start_label()
+
+	# Hot Wheels visual flair — giant loops + banked ramps as pure decor (no collision)
+	_spawn_hot_wheels_decor()
+
+
+func _spawn_hot_wheels_decor() -> void:
+	# 2 giant loops at the figure-8 extremities, scaled ×6, positioned alongside the track
+	# (not over it — cars don't pass through them, they're decorative landmarks)
+	var loop_glb: String = "res://assets/toy_kit/track-narrow-looping.glb"
+	_spawn_visual(loop_glb, Vector3(0, 0, -135), 0.0, 6.0)
+	_spawn_visual(loop_glb, Vector3(0, 0, +135), PI, 6.0)
+
+	# 4 banked corner ramps outside the figure-8 corners
+	var ramp_glb: String = "res://assets/toy_kit/track-narrow-corner-large-ramp.glb"
+	_spawn_visual(ramp_glb, Vector3(115, 0, -115), -PI/4.0, 5.0)
+	_spawn_visual(ramp_glb, Vector3(-115, 0, -115), PI/4.0, 5.0)
+	_spawn_visual(ramp_glb, Vector3(115, 0, +115), -PI*0.75, 5.0)
+	_spawn_visual(ramp_glb, Vector3(-115, 0, +115), PI*0.75, 5.0)
+
+	# Finish gate arch over the start line — scenic
+	var gate_glb: String = "res://assets/toy_kit/gate-finish.glb"
+	_spawn_visual(gate_glb, Vector3(58.0, 0.0, -8.0), atan2(0.95317, 0.30245), 6.0)
+
+
+func _spawn_visual(glb_path: String, world_pos: Vector3, yaw_rad: float, scale_factor: float) -> void:
+	# Visual-only spawn (no collision) for huge decor that shouldn't block cars.
+	var packed: PackedScene = load(glb_path) as PackedScene
+	if packed == null:
+		push_warning("decor: failed to load %s" % glb_path)
+		return
+	var inst: Node3D = packed.instantiate() as Node3D
+	if inst == null:
+		return
+	inst.name = "%s_visual_%d" % [glb_path.get_file().get_basename(), get_child_count()]
+	var b: Basis = Basis(Vector3.UP, yaw_rad).scaled(Vector3.ONE * scale_factor)
+	inst.transform = Transform3D(b, world_pos)
+	add_child(inst)
+
+
+func _spawn_food_scatter() -> void:
+	# 18 random food items at corners of the floor (outside both ovals, far enough to not clutter the track)
+	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+	rng.seed = 1337
+	var food_positions: Array[Vector3] = [
+		Vector3(125, 0, -120), Vector3(-130, 0, -125), Vector3(120, 0, 130), Vector3(-125, 0, 120),
+		Vector3(130, 0, 0), Vector3(-130, 0, 5), Vector3(0, 0, -130), Vector3(8, 0, 130),
+		Vector3(60, 0, -125), Vector3(-65, 0, -120), Vector3(70, 0, 125), Vector3(-60, 0, 130),
+		Vector3(125, 0, -65), Vector3(-130, 0, -55), Vector3(125, 0, 70), Vector3(-130, 0, 60),
+		Vector3(110, 0, -10), Vector3(-115, 0, 12),
+	]
+	for pos in food_positions:
+		var glb_path: String = FOOD_GLBS[rng.randi() % FOOD_GLBS.size()]
+		var yaw: float = rng.randf_range(0.0, TAU)
+		_spawn_collidable(glb_path, pos, yaw, SCALE_FOOD)
+
+
+func _spawn_start_label() -> void:
+	# Big painted "START" letters on the ground in front of the start line, facing the racing direction.
+	var label: Label3D = Label3D.new()
+	label.name = "StartGroundLabel"
+	label.text = "START"
+	label.font_size = 256
+	label.outline_size = 24
+	label.modulate = Color(1, 0.9, 0.1, 1)
+	label.outline_modulate = Color(0.05, 0.05, 0.05, 1)
+	label.no_depth_test = false
+	label.pixel_size = 0.06
+	# Place the text laying flat on the ground (rotate -90° around X so it reads facing up)
+	# at world (60, 0.06, -10) which is ~3m in front of the start stripe along the racing tangent
+	var b: Basis = Basis().rotated(Vector3.RIGHT, -PI / 2.0)
+	# Then yaw to align with the start line direction
+	b = b.rotated(Vector3.UP, atan2(0.95317, 0.30245))  # rotate to match start tangent
+	label.transform = Transform3D(b, Vector3(60.0, 0.06, -10.0))
+	add_child(label)
 
 
 func _spawn_collidable(glb_path: String, world_pos: Vector3, yaw_rad: float, scale_factor: float) -> void:

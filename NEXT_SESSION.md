@@ -138,3 +138,27 @@ Path : /Users/bpia/Documents/Seb/Coding/naskaus/games/micromachines-v3-clone/
 Priority 1 : décider option A/B/C pour le bridge 3D au crossing puis l'implémenter (voir section "Reportés à V0.15.1+").
 Vérifie git log + état avant de coder. Workflow : stop_project → edit → run_project → get_debug_output → 0 errors → git commit vX.Y.Z → terse FR update.
 ```
+
+---
+
+## 🌐 V0.20+ — Multiplayer Online (planifié 2026-05-03)
+
+### Architecture
+WebSocket relay sur Pi5 port 8060, exposé via Cloudflare tunnel `mv3-server.naskaus.com`. Pas de WebRTC P2P (NAT traversal galère).
+
+### 5 phases (~5-7 jours total)
+1. **Bases tech** (2j) : server Node.js + WebSocket, refactor car.gd input→message, client interpolation, test 2P même WiFi
+2. **Lobby + room codes** (1.5j) : menu Create/Join Room, code 4-lettres, QR code pour join mobile, liste players
+3. **Polish** (1j) : disconnect handling, reconnect, lag compensation prédiction client
+4. **Persistance** (1j, optionnel) : profiles Supabase, leaderboards globaux par circuit, best lap times publics
+5. **Deploy** (0.5j) : cron auto-restart, monitoring Grafana
+
+### Stack
+- Server : Node.js + `ws` OU Godot dedicated server headless ARM
+- DB : Supabase (déjà dans l'écosystème Naskaus)
+- Hosting : Pi5 + Cloudflare tunnel + nginx
+- Client : Godot WebSocketMultiplayerPeer (built-in, marche web export)
+
+### Coûts
+- Infra : 0€ (Pi5 + Cloudflare)
+- Maintenance : ~1h/mois
