@@ -12,6 +12,7 @@ extends RigidBody3D
 @export var skill: float = 1.0  # 0.5 = sluggish, 1.5 = aggressive (multiplies top speed)
 @export var player_path: NodePath  # set in Main.tscn — used for rubber-banding
 @export var racing_line_offset: float = 0.0  # m perpendicular to centerline (- inner, + outer)
+@export var driving_imperfection: float = 0.25  # 0 = perfect line, 0.5 = drunk — adds steer noise → triggers drift, smoke, mistakes
 
 # Same physics baseline as player (BASELINE V0.3 — slow ramp + steer drag + better drift)
 const TOP_SPEED := 42.0
@@ -56,6 +57,9 @@ var _boost_factor: float = 1.0
 var _smoke_left: CPUParticles3D
 var _smoke_right: CPUParticles3D
 var _boost_trail: CPUParticles3D
+
+# Driving imperfection (wobble noise — unique per bot)
+var _noise_phase: float = 0.0
 
 
 func _make_smoke_emitter(local_offset: Vector3) -> CPUParticles3D:
@@ -162,6 +166,7 @@ func _ready() -> void:
 	angular_damp = 4.0
 	_base_top_speed = TOP_SPEED * skill
 	_bot_top_speed = _base_top_speed
+	_noise_phase = randf_range(0.0, TAU)  # unique wobble cycle per bot
 	if player_path and not player_path.is_empty():
 		_player = get_node_or_null(player_path) as Node3D
 
@@ -261,7 +266,14 @@ func _physics_process(delta: float) -> void:
 				avoid_steer = -sign(hit_cross) * 0.9
 			avoid_active = true
 
-	# 9. Combine steer
+	# 9. Driving imperfection — sinusoidal wobble unique per bot
+	# Pushes steer past the drift threshold occasionally so bots aren't perfect line-runners
+	if driving_imperfection > 0.001:
+		var t_now: float = Time.get_ticks_msec() / 1000.0
+		var noise: float = sin(t_now * 1.7 + _noise_phase) * 0.65 + sin(t_now * 0.43 + _noise_phase * 1.7) * 0.45
+		centerline_steer += noise * driving_imperfection
+
+	# 10. Combine steer
 	var steer_input: float
 	if avoid_active:
 		steer_input = lerp(centerline_steer, avoid_steer, AVOID_STEER_BLEND)
