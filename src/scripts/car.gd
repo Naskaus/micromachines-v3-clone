@@ -115,21 +115,8 @@ func _build_car_visual_from_glb() -> bool:
 		n3d.scale = Vector3(car_model_scale, car_model_scale, car_model_scale)
 		# Kenney models face +Z by default; flip 180° so forward matches our -Z convention
 		n3d.rotation_degrees = Vector3(0, 180, 0)
-	# Tint every mesh in the imported model with the car_color
-	# (Kenney textures often don't survive Godot's GLB import without their atlas — tint guarantees a colored car)
-	_tint_car_meshes(inst, car_color)
+	# Keep Kenney's native materials — each model has its own multi-color paint job
 	return true
-
-
-func _tint_car_meshes(node: Node, color: Color) -> void:
-	if node is MeshInstance3D:
-		var mat: StandardMaterial3D = StandardMaterial3D.new()
-		mat.albedo_color = color
-		mat.roughness = 0.55
-		mat.metallic = 0.15
-		(node as MeshInstance3D).material_override = mat
-	for child in node.get_children():
-		_tint_car_meshes(child, color)
 
 
 func _build_car_visual(body_color: Color) -> void:
