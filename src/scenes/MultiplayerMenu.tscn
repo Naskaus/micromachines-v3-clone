@@ -536,11 +536,14 @@ theme_override_font_sizes/font_size = 11
 [node name="CodeInput" type="LineEdit" parent="JoinInputPanel/VBox"]
 custom_minimum_size = Vector2(0, 116)
 layout_mode = 2
+mouse_default_cursor_shape = 1
 placeholder_text = "ABCD"
 alignment = 1
 max_length = 4
-caret_blink = false
-caret_force_displayed = true
+editable = true
+selecting_enabled = true
+caret_blink = true
+caret_blink_interval = 0.6
 theme_override_styles/normal = SubResource("SBF_input")
 theme_override_styles/focus = SubResource("SBF_input_focus")
 theme_override_styles/read_only = SubResource("SBF_input")

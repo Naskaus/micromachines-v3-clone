@@ -15,7 +15,24 @@ func _ready() -> void:
 		return
 
 
-func _input(event: InputEvent) -> void:
+func _ui_is_capturing() -> bool:
+	# If any UI Control currently has keyboard focus (e.g. the join-code
+	# LineEdit), we MUST NOT translate the tap into a virtual driving button.
+	# Otherwise the tap that opens the on-screen keyboard would also press
+	# p1_left and the menu would feel broken.
+	var vp: Viewport = get_viewport()
+	if vp == null:
+		return false
+	var focused: Control = vp.gui_get_focus_owner()
+	return focused != null
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	# We use _unhandled_input here (not _input) so taps that hit a Button or
+	# LineEdit are consumed by the GUI first and never reach the driving
+	# pseudo-buttons. This is what stops the menu from feeling possessed.
+	if _ui_is_capturing():
+		return
 	if event is InputEventScreenTouch:
 		var touch: InputEventScreenTouch = event as InputEventScreenTouch
 		var screen_w: float = float(get_viewport().get_visible_rect().size.x)
