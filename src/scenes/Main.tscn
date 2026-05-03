@@ -1,4 +1,4 @@
-[gd_scene load_steps=8 format=3]
+[gd_scene load_steps=9 format=3]
 
 [ext_resource type="PackedScene" path="res://scenes/Track01.tscn" id="1_track"]
 [ext_resource type="PackedScene" path="res://scenes/Car.tscn" id="2_car"]
@@ -6,6 +6,7 @@
 [ext_resource type="Script" path="res://scripts/camera_follow.gd" id="4_cam"]
 [ext_resource type="Script" path="res://scripts/race_manager.gd" id="5_race"]
 [ext_resource type="Script" path="res://scripts/minimap.gd" id="6_minimap"]
+[ext_resource type="Script" path="res://scripts/fullscreen_button.gd" id="7_fs"]
 
 [sub_resource type="Environment" id="Env_default"]
 background_mode = 1
@@ -183,6 +184,19 @@ theme_override_colors/font_color = Color(1, 1, 1, 1)
 theme_override_colors/font_outline_color = Color(0.05, 0.05, 0.05, 1)
 theme_override_constants/outline_size = 8
 theme_override_font_sizes/font_size = 56
+
+[node name="FullscreenButton" type="Button" parent="HUD"]
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -130.0
+offset_top = 12.0
+offset_right = -12.0
+offset_bottom = 50.0
+grow_horizontal = 0
+text = "⛶ FULL"
+script = ExtResource("7_fs")
+theme_override_font_sizes/font_size = 18
 
 [node name="RaceManager" type="Node" parent="."]
 script = ExtResource("5_race")
