@@ -313,6 +313,26 @@ theme_override_colors/font_pressed_color = Color(0.102, 0.090, 0.078, 1)
 theme_override_colors/font_focus_color = Color(0.165, 0.150, 0.130, 1)
 theme_override_font_sizes/font_size = 18
 
+[node name="Spacer2" type="Control" parent="RootPanel/VBox"]
+custom_minimum_size = Vector2(0, 4)
+layout_mode = 2
+
+[node name="BtnQuit" type="Button" parent="RootPanel/VBox"]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+flat = true
+text = "Quitter le jeu"
+alignment = 1
+theme_override_styles/normal = SubResource("SBE_text")
+theme_override_styles/hover = SubResource("SBE_text")
+theme_override_styles/pressed = SubResource("SBE_text")
+theme_override_styles/focus = SubResource("SBE_text")
+theme_override_colors/font_color = Color(0.495, 0.475, 0.443, 1)
+theme_override_colors/font_hover_color = Color(0.785, 0.225, 0.180, 1)
+theme_override_colors/font_pressed_color = Color(0.785, 0.225, 0.180, 1)
+theme_override_colors/font_focus_color = Color(0.495, 0.475, 0.443, 1)
+theme_override_font_sizes/font_size = 13
+
 [node name="CreateLobbyPanel" type="Panel" parent="."]
 visible = false
 layout_mode = 1
@@ -798,3 +818,82 @@ theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
 theme_override_colors/font_pressed_color = Color(1, 1, 1, 1)
 theme_override_colors/font_focus_color = Color(1, 1, 1, 1)
 theme_override_font_sizes/font_size = 16
+
+[node name="OrientationOverlay" type="Control" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 1
+
+[node name="OBackground" type="ColorRect" parent="OrientationOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.957, 0.945, 0.918, 1)
+mouse_filter = 1
+
+[node name="PhoneIcon" type="Label" parent="OrientationOverlay"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -90.0
+offset_top = -160.0
+offset_right = 90.0
+offset_bottom = 20.0
+grow_horizontal = 2
+grow_vertical = 2
+pivot_offset = Vector2(90, 90)
+text = "▭"
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_colors/font_color = Color(0.102, 0.090, 0.078, 1)
+theme_override_font_sizes/font_size = 140
+
+[node name="OMessage" type="Label" parent="OrientationOverlay"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -260.0
+offset_top = 40.0
+offset_right = 260.0
+offset_bottom = 96.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "Tourne ton téléphone à l'horizontale"
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 3
+theme_override_colors/font_color = Color(0.165, 0.150, 0.130, 1)
+theme_override_font_sizes/font_size = 22
+
+[node name="OHint" type="Label" parent="OrientationOverlay"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -260.0
+offset_top = 100.0
+offset_right = 260.0
+offset_bottom = 132.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "Le menu réapparaîtra automatiquement."
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_colors/font_color = Color(0.495, 0.475, 0.443, 1)
+theme_override_font_sizes/font_size = 14

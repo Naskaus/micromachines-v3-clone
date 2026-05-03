@@ -19,6 +19,9 @@ enum Step { ROOT, CREATE_LOBBY, JOIN_INPUT, JOIN_LOBBY, CONNECTING, ERROR }
 @onready var _btn_solo2: Button = $RootPanel/VBox/BtnSolo2
 @onready var _btn_create: Button = $RootPanel/VBox/BtnCreate
 @onready var _btn_join: Button = $RootPanel/VBox/BtnJoin
+@onready var _btn_quit: Button = $RootPanel/VBox/BtnQuit
+@onready var _orientation_overlay: Control = $OrientationOverlay
+@onready var _orientation_icon: Label = $OrientationOverlay/PhoneIcon
 
 @onready var _create_code_label: Label = $CreateLobbyPanel/VBox/CodeLabel
 @onready var _create_player_count: Label = $CreateLobbyPanel/VBox/PlayerCountLabel
@@ -57,6 +60,11 @@ func _ready() -> void:
 	_btn_solo2.pressed.connect(func(): _request_solo(2))
 	_btn_create.pressed.connect(_on_create_pressed)
 	_btn_join.pressed.connect(_on_join_pressed)
+	_btn_quit.pressed.connect(_on_quit_pressed)
+	# Orientation watch (mobile portrait → show overlay)
+	get_viewport().size_changed.connect(_check_orientation)
+	_check_orientation()
+	_animate_orientation_icon()
 	_btn_copy_code.pressed.connect(_on_copy_code)
 	_btn_start_race.pressed.connect(_on_start_race_pressed)
 	_btn_create_back.pressed.connect(_on_back_to_root)
@@ -93,8 +101,54 @@ func _show_panel(p: Step) -> void:
 
 
 func _request_solo(num_players: int) -> void:
+	_request_fullscreen()
 	visible = false
 	emit_signal("solo_race_requested", num_players)
+
+
+func _request_fullscreen() -> void:
+	# Browsers only allow fullscreen as a direct response to a user gesture,
+	# so we request it from inside button handlers — never on _ready.
+	if OS.has_feature("web") or OS.has_feature("mobile"):
+		var current: int = DisplayServer.window_get_mode()
+		if current != DisplayServer.WINDOW_MODE_FULLSCREEN:
+			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
+
+
+func _on_quit_pressed() -> void:
+	# Try to close the tab. Browsers only honor window.close() for tabs the
+	# scripts opened themselves; otherwise we redirect to about:blank as a
+	# graceful fallback so the page is unmistakably "gone."
+	if OS.has_feature("web"):
+		JavaScriptBridge.eval("window.close();", true)
+		await get_tree().create_timer(0.15).timeout
+		JavaScriptBridge.eval("if (!window.closed) { window.location.href = 'about:blank'; }", true)
+	else:
+		get_tree().quit()
+
+
+func _check_orientation() -> void:
+	if _orientation_overlay == null:
+		return
+	var sz: Vector2 = get_viewport().get_visible_rect().size
+	# Show the rotate-your-phone overlay when the viewport is taller than wide.
+	# Threshold uses a small landscape bias (1.05) so a near-square window
+	# doesn't keep flickering the overlay at every resize event.
+	var portrait: bool = sz.y > sz.x * 1.05
+	_orientation_overlay.visible = portrait
+
+
+func _animate_orientation_icon() -> void:
+	if _orientation_icon == null:
+		return
+	# Tilt the icon back and forth like a phone being flipped, with a brief
+	# pause at each end so the gesture reads as "rotate me, please."
+	_orientation_icon.pivot_offset = _orientation_icon.size * 0.5
+	var t: Tween = create_tween().set_loops()
+	t.tween_property(_orientation_icon, "rotation_degrees", -90.0, 0.9).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+	t.tween_interval(0.5)
+	t.tween_property(_orientation_icon, "rotation_degrees", 0.0, 0.7).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+	t.tween_interval(1.2)
 
 
 func _on_create_pressed() -> void:
@@ -161,6 +215,7 @@ func _trigger_multiplayer_start() -> void:
 	if _race_started:
 		return
 	_race_started = true
+	_request_fullscreen()
 	if NetworkClient and _is_host:
 		NetworkClient.send_start()
 	visible = false
