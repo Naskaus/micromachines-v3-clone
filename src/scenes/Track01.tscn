@@ -1,4 +1,4 @@
-[gd_scene load_steps=25 format=3]
+[gd_scene load_steps=35 format=3]
 
 [ext_resource type="Script" path="res://scripts/boost_pad.gd" id="2_boost"]
 [ext_resource type="Shader" path="res://assets/pool_felt.gdshader" id="1_felt"]
@@ -80,6 +80,18 @@ emission_enabled = true
 emission = Color(1.0, 0.0, 0.0, 1)
 emission_energy_multiplier = 1.5
 
+[sub_resource type="StandardMaterial3D" id="Mat_arch_cyan"]
+albedo_color = Color(0.10, 0.85, 1.0, 1)
+emission_enabled = true
+emission = Color(0.0, 0.80, 1.0, 1)
+emission_energy_multiplier = 1.5
+
+[sub_resource type="StandardMaterial3D" id="Mat_arch_purple"]
+albedo_color = Color(0.70, 0.20, 1.0, 1)
+emission_enabled = true
+emission = Color(0.65, 0.0, 1.0, 1)
+emission_energy_multiplier = 1.5
+
 [sub_resource type="BoxShape3D" id="Shape_boost_zaxis"]
 size = Vector3(3.0, 1.0, 6.0)
 
@@ -146,12 +158,12 @@ mesh = SubResource("Mesh_wall_fb")
 surface_material_override/0 = SubResource("Mat_wall")
 
 [node name="StartStripe" type="MeshInstance3D" parent="."]
-transform = Transform3D(0.42501, 0.00000, -0.90519, 0.00000, 1.00000, 0.00000, 0.90519, 0.00000, 0.42501, -67.54952, 0.05000, 13.12656)
+transform = Transform3D(0.34144, 0.00000, -0.93990, 0.00000, 1.00000, 0.00000, 0.93990, 0.00000, 0.34144, 59.71843, 0.05000, -9.89059)
 mesh = SubResource("Mesh_start_stripe")
 surface_material_override/0 = SubResource("Mat_start_stripe")
 
 [node name="Arch_1" type="Area3D" parent="."]
-transform = Transform3D(-0.19420, 0.00000, 0.98096, 0.00000, 1.00000, 0.00000, -0.98096, 0.00000, -0.19420, -36.81246, 4.00000, 3.51118)
+transform = Transform3D(0.83851, 0.00000, -0.54489, 0.00000, 1.00000, 0.00000, 0.54489, 0.00000, 0.83851, 95.10565, 4.00000, -34.54915)
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Arch_1"]
 shape = SubResource("Shape_arch_gate")
@@ -172,7 +184,7 @@ mesh = SubResource("Mesh_arch_top")
 surface_material_override/0 = SubResource("Mat_arch_green")
 
 [node name="Arch_2" type="Area3D" parent="."]
-transform = Transform3D(0.00000, 0.00000, -1.00000, 0.00000, 1.00000, 0.00000, 1.00000, 0.00000, 0.00000, 0.00000, 4.00000, -100.00000)
+transform = Transform3D(0.00000, 0.00000, 1.00000, 0.00000, 1.00000, 0.00000, -1.00000, 0.00000, 0.00000, 0.00000, 4.00000, -100.00000)
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Arch_2"]
 shape = SubResource("Shape_arch_gate")
@@ -193,7 +205,7 @@ mesh = SubResource("Mesh_arch_top")
 surface_material_override/0 = SubResource("Mat_arch_yellow")
 
 [node name="Arch_3" type="Area3D" parent="."]
-transform = Transform3D(0.19420, 0.00000, 0.98096, 0.00000, 1.00000, 0.00000, -0.98096, 0.00000, 0.19420, 36.81246, 4.00000, 3.51118)
+transform = Transform3D(-0.83851, 0.00000, -0.54489, 0.00000, 1.00000, 0.00000, 0.54489, 0.00000, -0.83851, -95.10565, 4.00000, -34.54915)
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Arch_3"]
 shape = SubResource("Shape_arch_gate")
@@ -214,7 +226,7 @@ mesh = SubResource("Mesh_arch_top")
 surface_material_override/0 = SubResource("Mat_arch_orange")
 
 [node name="Arch_4" type="Area3D" parent="."]
-transform = Transform3D(0.00000, 0.00000, -1.00000, 0.00000, 1.00000, 0.00000, 1.00000, 0.00000, 0.00000, 0.00000, 4.00000, 100.00000)
+transform = Transform3D(-0.83851, 0.00000, -0.54489, 0.00000, 1.00000, 0.00000, 0.54489, 0.00000, -0.83851, 95.10565, 4.00000, 34.54915)
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Arch_4"]
 shape = SubResource("Shape_arch_gate")
@@ -222,17 +234,59 @@ shape = SubResource("Shape_arch_gate")
 [node name="PillarLeft" type="MeshInstance3D" parent="Arch_4"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.0, 0, 0)
 mesh = SubResource("Mesh_arch_pillar")
-surface_material_override/0 = SubResource("Mat_arch_red")
+surface_material_override/0 = SubResource("Mat_arch_cyan")
 
 [node name="PillarRight" type="MeshInstance3D" parent="Arch_4"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.0, 0, 0)
 mesh = SubResource("Mesh_arch_pillar")
-surface_material_override/0 = SubResource("Mat_arch_red")
+surface_material_override/0 = SubResource("Mat_arch_cyan")
 
 [node name="Crossbar" type="MeshInstance3D" parent="Arch_4"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4.5, 0)
 mesh = SubResource("Mesh_arch_top")
+surface_material_override/0 = SubResource("Mat_arch_cyan")
+
+[node name="Arch_5" type="Area3D" parent="."]
+transform = Transform3D(0.00000, 0.00000, 1.00000, 0.00000, 1.00000, 0.00000, -1.00000, 0.00000, 0.00000, 0.00000, 4.00000, 100.00000)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Arch_5"]
+shape = SubResource("Shape_arch_gate")
+
+[node name="PillarLeft" type="MeshInstance3D" parent="Arch_5"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.0, 0, 0)
+mesh = SubResource("Mesh_arch_pillar")
 surface_material_override/0 = SubResource("Mat_arch_red")
+
+[node name="PillarRight" type="MeshInstance3D" parent="Arch_5"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.0, 0, 0)
+mesh = SubResource("Mesh_arch_pillar")
+surface_material_override/0 = SubResource("Mat_arch_red")
+
+[node name="Crossbar" type="MeshInstance3D" parent="Arch_5"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4.5, 0)
+mesh = SubResource("Mesh_arch_top")
+surface_material_override/0 = SubResource("Mat_arch_red")
+
+[node name="Arch_6" type="Area3D" parent="."]
+transform = Transform3D(0.83851, 0.00000, -0.54489, 0.00000, 1.00000, 0.00000, 0.54489, 0.00000, 0.83851, -95.10565, 4.00000, 34.54915)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Arch_6"]
+shape = SubResource("Shape_arch_gate")
+
+[node name="PillarLeft" type="MeshInstance3D" parent="Arch_6"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.0, 0, 0)
+mesh = SubResource("Mesh_arch_pillar")
+surface_material_override/0 = SubResource("Mat_arch_purple")
+
+[node name="PillarRight" type="MeshInstance3D" parent="Arch_6"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.0, 0, 0)
+mesh = SubResource("Mesh_arch_pillar")
+surface_material_override/0 = SubResource("Mat_arch_purple")
+
+[node name="Crossbar" type="MeshInstance3D" parent="Arch_6"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4.5, 0)
+mesh = SubResource("Mesh_arch_top")
+surface_material_override/0 = SubResource("Mat_arch_purple")
 
 [node name="BoostPad_TopEast" type="Area3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 100, 0.05, -50)

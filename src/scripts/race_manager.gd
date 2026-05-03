@@ -49,7 +49,7 @@ var _results_label: Label
 var _speedometer_label: Label
 
 # Cached arch references for dynamic highlight (next-target glow)
-const ARCH_COLOR_NAMES: Array[String] = ["VERTE", "JAUNE", "ORANGE", "ROUGE"]
+const ARCH_COLOR_NAMES: Array[String] = ["VERTE", "JAUNE", "ORANGE", "CYAN", "ROUGE", "VIOLETTE"]
 const HIGHLIGHT_EMISSION := 4.0  # multiplier on the next arch
 const NORMAL_EMISSION := 1.5     # baseline
 var _arch_nodes: Array[Area3D] = []
@@ -165,7 +165,8 @@ func _on_arch_entered(body: Node, arch_idx: int) -> void:
 		return
 	if arch_idx != data.next_arch_index:
 		return  # out-of-order pass — ignore
-	if arch_idx == 3:
+	var last_arch_idx: int = arch_paths.size() - 1
+	if arch_idx == last_arch_idx:
 		var now: float = Time.get_ticks_msec() / 1000.0
 		if now - data.last_lap_time < MIN_LAP_TIME:
 			return  # debounce — would-be sub-MIN_LAP_TIME lap
@@ -500,11 +501,11 @@ func _compute_rankings() -> Array:
 
 func _racer_progress(racer: Node) -> float:
 	# Progress = laps + segment + phase_fine_tiebreaker.
-	# Each arch = 25% of the lap (next_arch_index 0→3 means seg 0/0.25/0.5/0.75).
-	# Cheaters can't gain laps without passing all 4 arches in order.
+	# Each arch = 1/N of the lap (N = arch count). Cheaters can't gain laps without passing all N in order.
 	var data: Dictionary = _racer_data[racer]
 	var laps: float = float(data.laps)
-	var seg: float = float(data.next_arch_index) * 0.25
+	var arch_count: float = max(1.0, float(arch_paths.size()))
+	var seg: float = float(data.next_arch_index) / arch_count
 	# Tiny fine-grained tiebreaker: position along the racing line within the segment
 	var fine: float = 0.0
 	if "_path_phase" in racer:
