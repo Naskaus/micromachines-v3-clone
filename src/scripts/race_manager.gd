@@ -23,8 +23,7 @@ enum State { MENU, PRE_RACE, COUNTDOWN, RACING, FINISHED }
 @export var player_paths: Array[NodePath] = []  # human players (P1, P2, ...)
 @export var bot_paths: Array[NodePath] = []
 @export var finish_line_path: NodePath  # legacy — unused now
-@export var top_checkpoint_path: NodePath  # at top of top oval (figure-8)
-@export var bot_checkpoint_path: NodePath  # at bottom of bottom oval (figure-8)
+@export var arch_paths: Array[NodePath] = []  # 4 arches in racing order (Arch_1..Arch_4); lap = pass all 4 in order
 @export var camera_path: NodePath  # camera follows the current leader
 @export var menu_label_path: NodePath
 @export var countdown_label_path: NodePath
@@ -69,13 +68,13 @@ func _ready() -> void:
 		if b:
 			_register_racer(b, b.name, false)
 
-	# Wire checkpoints — lap requires passing TOP then BOT then TOP again (figure-8 valid loop)
-	var top_cp: Area3D = get_node_or_null(top_checkpoint_path) as Area3D
-	if top_cp:
-		top_cp.body_entered.connect(_on_top_checkpoint_entered)
-	var bot_cp: Area3D = get_node_or_null(bot_checkpoint_path) as Area3D
-	if bot_cp:
-		bot_cp.body_entered.connect(_on_bot_checkpoint_entered)
+	# Wire 4 arches — lap requires passing them in order (0→1→2→3→0)
+	for i in range(arch_paths.size()):
+		var arch: Area3D = get_node_or_null(arch_paths[i]) as Area3D
+		if arch:
+			arch.body_entered.connect(_on_arch_entered.bind(i))
+		else:
+			push_warning("RaceManager: arch_paths[%d] is missing" % i)
 
 	if _results_label:
 		_results_label.visible = false
@@ -104,8 +103,7 @@ func _register_racer(racer: Node, display_name: String, is_player: bool) -> void
 		"lap_times": [] as Array[float],
 		"finish_time": 0.0,
 		"finished": false,
-		"passed_top": false,  # has crossed TopCheckpoint this lap?
-		"passed_bot": false,  # has crossed BotCheckpoint this lap?
+		"next_arch_index": 0,  # 0..3, which arch the racer must hit next; lap completes on hitting arch 3
 	}
 
 
@@ -134,7 +132,9 @@ func _start_race() -> void:
 		_racer_data[r].last_lap_time = _race_start_time
 
 
-func _on_top_checkpoint_entered(body: Node) -> void:
+func _on_arch_entered(body: Node, arch_idx: int) -> void:
+	# 4 arches in racing order. Racer must pass arch_idx == data.next_arch_index, else ignored.
+	# Hitting arch 3 (last) with next_arch_index==3 completes a lap.
 	if _state != State.RACING:
 		return
 	if not _racer_data.has(body):
@@ -142,35 +142,24 @@ func _on_top_checkpoint_entered(body: Node) -> void:
 	var data: Dictionary = _racer_data[body]
 	if data.finished or _eliminated.has(body):
 		return
-	# If they've already passed BOT this lap, this top crossing completes a lap
-	if data.passed_bot:
+	if arch_idx != data.next_arch_index:
+		return  # out-of-order pass — ignore
+	if arch_idx == 3:
 		var now: float = Time.get_ticks_msec() / 1000.0
-		if now - data.last_lap_time >= MIN_LAP_TIME:
-			var lap_duration: float = now - data.last_lap_time
-			data.lap_times.append(lap_duration)
-			data.last_lap_time = now
-			data.laps += 1
-			data.passed_bot = false
-			if data.laps >= TOTAL_LAPS:
-				data.finished = true
-				data.finish_time = now - _race_start_time
-				_finish_order.append(body)
-				_check_race_end()
-	data.passed_top = true
-
-
-func _on_bot_checkpoint_entered(body: Node) -> void:
-	if _state != State.RACING:
-		return
-	if not _racer_data.has(body):
-		return
-	var data: Dictionary = _racer_data[body]
-	if data.finished or _eliminated.has(body):
-		return
-	# Bot checkpoint only counts if top was passed first (enforces figure-8 order)
-	if data.passed_top:
-		data.passed_bot = true
-		data.passed_top = false
+		if now - data.last_lap_time < MIN_LAP_TIME:
+			return  # debounce — would-be sub-MIN_LAP_TIME lap
+		var lap_duration: float = now - data.last_lap_time
+		data.lap_times.append(lap_duration)
+		data.last_lap_time = now
+		data.laps += 1
+		data.next_arch_index = 0
+		if data.laps >= TOTAL_LAPS:
+			data.finished = true
+			data.finish_time = now - _race_start_time
+			_finish_order.append(body)
+			_check_race_end()
+	else:
+		data.next_arch_index = arch_idx + 1
 
 
 func _check_race_end() -> void:
@@ -461,19 +450,16 @@ func _compute_rankings() -> Array:
 
 
 func _racer_progress(racer: Node) -> float:
-	# Coarse progress: laps + checkpoint_progress (defeats cheaters who farm phase without doing the figure-8)
-	# Cheaters never gain laps because they never pass both checkpoints in order.
-	var laps: float = float(_racer_data[racer].laps)
+	# Progress = laps + segment + phase_fine_tiebreaker.
+	# Each arch = 25% of the lap (next_arch_index 0→3 means seg 0/0.25/0.5/0.75).
+	# Cheaters can't gain laps without passing all 4 arches in order.
 	var data: Dictionary = _racer_data[racer]
-	var seg: float = 0.0
-	if data.passed_top and not data.passed_bot:
-		seg = 0.5  # past top, racing toward bot (heading south)
-	elif data.passed_bot:
-		seg = 0.99  # past bot, about to complete lap at top
-	# Tiny fine-grained tiebreaker: phase distance from segment start
+	var laps: float = float(data.laps)
+	var seg: float = float(data.next_arch_index) * 0.25
+	# Tiny fine-grained tiebreaker: position along the racing line within the segment
 	var fine: float = 0.0
 	if "_path_phase" in racer:
-		fine = racer._path_phase * 0.01
+		fine = racer._path_phase * 0.001  # << seg weight, used purely for tie-breaking
 	return laps + seg + fine
 
 
