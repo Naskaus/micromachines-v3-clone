@@ -14,6 +14,15 @@ extends Camera3D
 
 var _targets: Array = []
 
+# Shake state — public via add_shake() from car/race events
+var _shake_intensity: float = 0.0
+const SHAKE_DECAY := 6.0  # decays per second
+
+
+func add_shake(amount: float) -> void:
+	if amount > _shake_intensity:
+		_shake_intensity = amount
+
 
 func _ready() -> void:
 	if target_path and not target_path.is_empty():
@@ -62,13 +71,17 @@ func _physics_process(delta: float) -> void:
 
 	# Single target: use the existing chase-cam (behind in target's local frame).
 	# Multi-target: position straight above midpoint, with small +Z back offset.
+	var jitter: Vector3 = Vector3.ZERO
+	if _shake_intensity > 0.001:
+		jitter = Vector3(randf_range(-1, 1), randf_range(-1, 1), randf_range(-1, 1)) * _shake_intensity
+		_shake_intensity = max(0.0, _shake_intensity - SHAKE_DECAY * delta)
 	if _targets.size() == 1:
 		var car_basis: Basis = _targets[0].transform.basis
 		var local_offset: Vector3 = Vector3(0.0, adaptive_height, back_offset)
-		var desired_pos: Vector3 = _targets[0].global_position + car_basis * local_offset
+		var desired_pos: Vector3 = _targets[0].global_position + car_basis * local_offset + jitter
 		global_position = global_position.lerp(desired_pos, clamp(smoothing * delta, 0.0, 1.0))
 		look_at(_targets[0].global_position, Vector3.UP)
 	else:
-		var desired_pos: Vector3 = midpoint + Vector3(0.0, adaptive_height, back_offset)
+		var desired_pos: Vector3 = midpoint + Vector3(0.0, adaptive_height, back_offset) + jitter
 		global_position = global_position.lerp(desired_pos, clamp(smoothing * delta, 0.0, 1.0))
 		look_at(midpoint, Vector3.UP)

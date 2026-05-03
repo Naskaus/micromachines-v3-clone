@@ -16,6 +16,7 @@ extends RigidBody3D
 @export var car_color: Color = Color(0.9, 0.2, 0.2, 1.0)  # body color (overrides Mat_red)
 @export var respawn_keycode: int = KEY_R  # which key respawns this car
 @export var reverse_keycode: int = KEY_S  # held to reverse out of a stuck spot
+@export var camera_path: NodePath = NodePath("../Camera3D")  # for shake feedback
 
 # --- Tuning constants (BASELINE V0.3 — slow ramp + steer drag + better drift) ---
 const TOP_SPEED := 42.0          # m/s — cruise speed
@@ -83,6 +84,7 @@ func _off_track_factor() -> float:
 var _left_action: String
 var _right_action: String
 var _hud_label: Label
+var _camera: Node = null  # set in _ready, used to trigger shake on impact / boost
 
 # --- Particle FX (built programmatically in _ready) ---
 var _smoke_left: CPUParticles3D
@@ -163,6 +165,20 @@ func apply_boost(duration: float, factor: float) -> void:
 	if fwd_speed < target:
 		var lateral: Vector3 = linear_velocity - fwd * fwd_speed
 		linear_velocity = fwd * target + lateral
+	# Camera shake feedback (player only — bots' boosts don't shake the player's camera)
+	if player_id == 1 and _camera and _camera.has_method("add_shake"):
+		_camera.add_shake(1.2)
+
+
+func _on_collision_impact(_body: Node) -> void:
+	# Shake camera proportional to current speed (only player's camera matters)
+	if player_id != 1 or _camera == null or not _camera.has_method("add_shake"):
+		return
+	var v: float = linear_velocity.length()
+	if v < 25.0:
+		return  # ignore gentle bumps
+	var amount: float = clamp((v - 25.0) * 0.06, 0.4, 2.5)
+	_camera.add_shake(amount)
 
 
 func _effective_top_speed() -> float:
@@ -194,6 +210,13 @@ func _ready() -> void:
 	add_child(_smoke_left)
 	add_child(_smoke_right)
 	add_child(_boost_trail)
+	# Camera shake setup (player 1 only — that's whose camera we follow)
+	if camera_path and not camera_path.is_empty():
+		_camera = get_node_or_null(camera_path)
+	if player_id == 1:
+		contact_monitor = true
+		max_contacts_reported = 4
+		body_entered.connect(_on_collision_impact)
 	_apply_speed_mode()
 
 
