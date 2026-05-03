@@ -22,7 +22,9 @@ enum State { MENU, PRE_RACE, COUNTDOWN, RACING, FINISHED }
 
 @export var player_paths: Array[NodePath] = []  # human players (P1, P2, ...)
 @export var bot_paths: Array[NodePath] = []
-@export var finish_line_path: NodePath
+@export var finish_line_path: NodePath  # legacy — unused now
+@export var top_checkpoint_path: NodePath  # at top of top oval (figure-8)
+@export var bot_checkpoint_path: NodePath  # at bottom of bottom oval (figure-8)
 @export var camera_path: NodePath  # camera follows the current leader
 @export var menu_label_path: NodePath
 @export var countdown_label_path: NodePath
@@ -67,8 +69,13 @@ func _ready() -> void:
 		if b:
 			_register_racer(b, b.name, false)
 
-	# FinishLine is now visual-only — lap detection happens via phase-wrap in _check_lap_wraps()
-	pass
+	# Wire checkpoints — lap requires passing TOP then BOT then TOP again (figure-8 valid loop)
+	var top_cp: Area3D = get_node_or_null(top_checkpoint_path) as Area3D
+	if top_cp:
+		top_cp.body_entered.connect(_on_top_checkpoint_entered)
+	var bot_cp: Area3D = get_node_or_null(bot_checkpoint_path) as Area3D
+	if bot_cp:
+		bot_cp.body_entered.connect(_on_bot_checkpoint_entered)
 
 	if _results_label:
 		_results_label.visible = false
@@ -93,10 +100,12 @@ func _register_racer(racer: Node, display_name: String, is_player: bool) -> void
 		"is_player": is_player,
 		"laps": 0,
 		"last_lap_time": 0.0,
-		"last_phase": 0.25,  # for phase-wrap lap detection
+		"last_phase": 0.0,
 		"lap_times": [] as Array[float],
 		"finish_time": 0.0,
 		"finished": false,
+		"passed_top": false,  # has crossed TopCheckpoint this lap?
+		"passed_bot": false,  # has crossed BotCheckpoint this lap?
 	}
 
 
@@ -125,37 +134,43 @@ func _start_race() -> void:
 		_racer_data[r].last_lap_time = _race_start_time
 
 
-func _on_finish_line_entered(_body: Node) -> void:
-	# Lap detection is now phase-wrap based (see _check_lap_wraps), this handler is unused
-	pass
+func _on_top_checkpoint_entered(body: Node) -> void:
+	if _state != State.RACING:
+		return
+	if not _racer_data.has(body):
+		return
+	var data: Dictionary = _racer_data[body]
+	if data.finished or _eliminated.has(body):
+		return
+	# If they've already passed BOT this lap, this top crossing completes a lap
+	if data.passed_bot:
+		var now: float = Time.get_ticks_msec() / 1000.0
+		if now - data.last_lap_time >= MIN_LAP_TIME:
+			var lap_duration: float = now - data.last_lap_time
+			data.lap_times.append(lap_duration)
+			data.last_lap_time = now
+			data.laps += 1
+			data.passed_bot = false
+			if data.laps >= TOTAL_LAPS:
+				data.finished = true
+				data.finish_time = now - _race_start_time
+				_finish_order.append(body)
+				_check_race_end()
+	data.passed_top = true
 
 
-func _check_lap_wraps() -> void:
-	# Detect phase wrap (>0.85 → <0.15) for each racer to count laps
-	var now: float = Time.get_ticks_msec() / 1000.0
-	for r in _racers:
-		if _eliminated.has(r):
-			continue
-		var data: Dictionary = _racer_data[r]
-		if data.finished:
-			continue
-		if not ("_path_phase" in r):
-			continue
-		var phase: float = r._path_phase
-		var last: float = data.last_phase
-		# Wrap: phase went from end of lap (≥0.85) back to start (≤0.15) — means lap completed
-		if last > 0.85 and phase < 0.15:
-			if now - data.last_lap_time >= MIN_LAP_TIME:
-				var lap_duration: float = now - data.last_lap_time
-				data.lap_times.append(lap_duration)
-				data.last_lap_time = now
-				data.laps += 1
-				if data.laps >= TOTAL_LAPS:
-					data.finished = true
-					data.finish_time = now - _race_start_time
-					_finish_order.append(r)
-					_check_race_end()
-		data.last_phase = phase
+func _on_bot_checkpoint_entered(body: Node) -> void:
+	if _state != State.RACING:
+		return
+	if not _racer_data.has(body):
+		return
+	var data: Dictionary = _racer_data[body]
+	if data.finished or _eliminated.has(body):
+		return
+	# Bot checkpoint only counts if top was passed first (enforces figure-8 order)
+	if data.passed_top:
+		data.passed_bot = true
+		data.passed_top = false
 
 
 func _check_race_end() -> void:
@@ -212,7 +227,6 @@ func _process(_delta: float) -> void:
 		return
 	_update_leader_and_camera()
 	if _state == State.RACING:
-		_check_lap_wraps()
 		_feed_progress_gaps_to_players()
 		_check_eliminations()
 		_update_race_hud()
@@ -447,15 +461,20 @@ func _compute_rankings() -> Array:
 
 
 func _racer_progress(racer: Node) -> float:
+	# Coarse progress: laps + checkpoint_progress (defeats cheaters who farm phase without doing the figure-8)
+	# Cheaters never gain laps because they never pass both checkpoints in order.
 	var laps: float = float(_racer_data[racer].laps)
-	# Use racer's own phase if exposed (cars + bots all track _path_phase)
-	# Adjust phase so START position (initial_path_phase = 0.25) maps to 0 progress within a lap
-	var phase: float = 0.0
+	var data: Dictionary = _racer_data[racer]
+	var seg: float = 0.0
+	if data.passed_top and not data.passed_bot:
+		seg = 0.5  # past top, racing toward bot (heading south)
+	elif data.passed_bot:
+		seg = 0.99  # past bot, about to complete lap at top
+	# Tiny fine-grained tiebreaker: phase distance from segment start
+	var fine: float = 0.0
 	if "_path_phase" in racer:
-		phase = racer._path_phase
-	# Shift so start-of-lap (0.25) = 0 lap-progress
-	var progress_in_lap: float = wrapf(phase - 0.25, 0.0, 1.0)
-	return laps + progress_in_lap
+		fine = racer._path_phase * 0.01
+	return laps + seg + fine
 
 
 # Phase-from-position helper (still useful for HUD widgets)
