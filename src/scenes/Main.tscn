@@ -25,6 +25,7 @@ hud_label_path = NodePath("../HUD/SpeedLabel")
 spawn_pos = Vector3(5, 0.5, 82)
 spawn_yaw_deg = -90.0
 car_color = Color(0.9, 0.2, 0.2, 1)
+car_model_path = "res://assets/cars/race.glb"
 respawn_keycode = 82
 reverse_keycode = 83
 
@@ -34,6 +35,7 @@ player_id = 2
 spawn_pos = Vector3(5, 0.5, 78)
 spawn_yaw_deg = -90.0
 car_color = Color(0.20, 0.85, 0.95, 1)
+car_model_path = "res://assets/cars/sedan-sports.glb"
 respawn_keycode = 80
 reverse_keycode = 75
 
@@ -44,6 +46,7 @@ skill = 0.97
 player_path = NodePath("../P1_Red")
 racing_line_offset = 3.0
 driving_imperfection = 0.25
+car_model_path = "res://assets/cars/hatchback-sports.glb"
 
 [node name="Bot2_Yellow" parent="." instance=ExtResource("3_bot")]
 transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, 10, 0.5, 81)
@@ -52,6 +55,7 @@ skill = 1.00
 player_path = NodePath("../P1_Red")
 racing_line_offset = 1.0
 driving_imperfection = 0.20
+car_model_path = "res://assets/cars/kart-oobi.glb"
 
 [node name="Bot3_Green" parent="." instance=ExtResource("3_bot")]
 transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, 10, 0.5, 79)
@@ -60,6 +64,7 @@ skill = 0.95
 player_path = NodePath("../P1_Red")
 racing_line_offset = -1.0
 driving_imperfection = 0.40
+car_model_path = "res://assets/cars/tractor.glb"
 
 [node name="Bot4_Purple" parent="." instance=ExtResource("3_bot")]
 transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, 10, 0.5, 77)
@@ -68,6 +73,7 @@ skill = 1.03
 player_path = NodePath("../P1_Red")
 racing_line_offset = -3.0
 driving_imperfection = 0.15
+car_model_path = "res://assets/cars/race-future.glb"
 
 [node name="Camera3D" type="Camera3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 0.258819, 0.965926, 0, -0.965926, 0.258819, 5, 22, 86)

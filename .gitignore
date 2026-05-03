@@ -1,35 +1,10 @@
-# Godot 4
+# Godot 4 generated
 .godot/
 .import/
-export.cfg
-export_presets.cfg
 *.translation
-
-# Mono/C# (not used here, but future-proof)
-.mono/
-data_*/
-mono_crash.*.json
 
 # OS
 .DS_Store
-Thumbs.db
 
-# Editor
-.vscode/
-.idea/
-*.swp
-*~
-
-# Builds
-builds/
-*.app/
-*.exe
-*.x86_64
-*.dmg
-*.zip
-
-# Logs
-*.log
-
-# Local Claude Code config (per-machine permissions)
-.claude/settings.local.json
+# Original Kenney archives (we keep flat copies in src/assets/cars and src/assets/track_pieces)
+src/assets/kenney/

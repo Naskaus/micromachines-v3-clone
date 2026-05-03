@@ -13,6 +13,9 @@ extends RigidBody3D
 @export var player_path: NodePath  # set in Main.tscn — used for rubber-banding
 @export var racing_line_offset: float = 0.0  # m perpendicular to centerline (- inner, + outer)
 @export var driving_imperfection: float = 0.25  # 0 = perfect line, 0.5 = drunk — adds steer noise → triggers drift, smoke, mistakes
+@export var car_model_path: String = ""
+@export var car_model_scale: float = 1.0
+@export var car_model_y_offset: float = -0.25
 
 # Same physics baseline as player (BASELINE V0.3 — slow ramp + steer drag + better drift)
 const TOP_SPEED := 42.0
@@ -60,6 +63,25 @@ var _boost_trail: CPUParticles3D
 
 # Driving imperfection (wobble noise — unique per bot)
 var _noise_phase: float = 0.0
+
+
+func _build_car_visual_from_glb() -> bool:
+	if car_model_path.is_empty():
+		return false
+	var packed: PackedScene = load(car_model_path) as PackedScene
+	if packed == null:
+		push_warning("[bot_car.gd] Could not load model: " + car_model_path)
+		return false
+	var existing: Node = get_node_or_null("MeshInstance3D")
+	if existing and existing is MeshInstance3D:
+		existing.visible = false
+	var inst: Node = packed.instantiate()
+	inst.name = "CarModel"
+	add_child(inst)
+	if inst is Node3D:
+		(inst as Node3D).position = Vector3(0, car_model_y_offset, 0)
+		(inst as Node3D).scale = Vector3(car_model_scale, car_model_scale, car_model_scale)
+	return true
 
 
 func _build_car_visual(body_color: Color) -> void:
@@ -228,8 +250,9 @@ func _ready() -> void:
 	if player_path and not player_path.is_empty():
 		_player = get_node_or_null(player_path) as Node3D
 
-	# Replace placeholder box with chunky multi-mesh car (chassis + cabin + 4 wheels)
-	_build_car_visual(bot_color)
+	# Try Kenney .glb first; fallback to primitives
+	if not _build_car_visual_from_glb():
+		_build_car_visual(bot_color)
 	# Particle FX (drift smoke + boost trail)
 	_smoke_left = _make_smoke_emitter(Vector3(-0.45, 0.0, 0.95))
 	_smoke_right = _make_smoke_emitter(Vector3(0.45, 0.0, 0.95))

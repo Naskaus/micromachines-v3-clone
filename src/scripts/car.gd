@@ -13,7 +13,10 @@ extends RigidBody3D
 @export var hud_label_path: NodePath
 @export var spawn_pos: Vector3 = Vector3(0.0, 0.5, 80.0)
 @export var spawn_yaw_deg: float = -90.0  # rotation around Y at spawn
-@export var car_color: Color = Color(0.9, 0.2, 0.2, 1.0)  # body color (overrides Mat_red)
+@export var car_color: Color = Color(0.9, 0.2, 0.2, 1.0)  # body color (used by primitive build only)
+@export var car_model_path: String = ""  # if set, loads a .glb from this path instead of building primitives
+@export var car_model_scale: float = 1.0  # uniform scale to fit the 1×0.5×2 collision
+@export var car_model_y_offset: float = -0.25  # Kenney models have origin at bottom — drop to chassis bottom
 @export var respawn_keycode: int = KEY_R  # which key respawns this car
 @export var reverse_keycode: int = KEY_S  # held to reverse out of a stuck spot
 @export var camera_path: NodePath = NodePath("../Camera3D")  # for shake feedback
@@ -90,6 +93,26 @@ var _camera: Node = null  # set in _ready, used to trigger shake on impact / boo
 var _smoke_left: CPUParticles3D
 var _smoke_right: CPUParticles3D
 var _boost_trail: CPUParticles3D
+
+
+func _build_car_visual_from_glb() -> bool:
+	if car_model_path.is_empty():
+		return false
+	var packed: PackedScene = load(car_model_path) as PackedScene
+	if packed == null:
+		push_warning("[car.gd] Could not load model at: " + car_model_path)
+		return false
+	# Hide placeholder
+	var existing: Node = get_node_or_null("MeshInstance3D")
+	if existing and existing is MeshInstance3D:
+		existing.visible = false
+	var inst: Node = packed.instantiate()
+	inst.name = "CarModel"
+	add_child(inst)
+	if inst is Node3D:
+		(inst as Node3D).position = Vector3(0, car_model_y_offset, 0)
+		(inst as Node3D).scale = Vector3(car_model_scale, car_model_scale, car_model_scale)
+	return true
 
 
 func _build_car_visual(body_color: Color) -> void:
@@ -249,8 +272,9 @@ func _ready() -> void:
 	angular_damp = 4.0
 	if hud_label_path and not hud_label_path.is_empty():
 		_hud_label = get_node_or_null(hud_label_path) as Label
-	# Replace the placeholder box with a chunky multi-mesh car (chassis + cabin + 4 wheels)
-	_build_car_visual(car_color)
+	# Try to load a Kenney .glb model first; fall back to primitive build if missing
+	if not _build_car_visual_from_glb():
+		_build_car_visual(car_color)
 	# Particle FX (drift smoke from rear corners + boost trail from center rear)
 	_smoke_left = _make_smoke_emitter(Vector3(-0.45, 0.0, 0.95))
 	_smoke_right = _make_smoke_emitter(Vector3(0.45, 0.0, 0.95))
