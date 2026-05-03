@@ -26,15 +26,18 @@ enum Step { ROOT, CREATE_LOBBY, JOIN_INPUT, JOIN_LOBBY, CONNECTING, ERROR }
 @onready var _btn_copy_code: Button = $CreateLobbyPanel/VBox/HBox/BtnCopy
 @onready var _btn_start_race: Button = $CreateLobbyPanel/VBox/HBox/BtnStart
 @onready var _btn_create_back: Button = $CreateLobbyPanel/VBox/BtnBack
+@onready var _btn_create_navback: Button = $CreateLobbyPanel/VBox/NavBar/BtnNavBack
 
 @onready var _join_code_input: LineEdit = $JoinInputPanel/VBox/CodeInput
 @onready var _btn_join_confirm: Button = $JoinInputPanel/VBox/HBox/BtnConfirm
 @onready var _btn_join_back: Button = $JoinInputPanel/VBox/HBox/BtnBack
+@onready var _btn_join_navback: Button = $JoinInputPanel/VBox/NavBar/BtnNavBack
 
 @onready var _join_lobby_code: Label = $JoinLobbyPanel/VBox/CodeLabel
 @onready var _join_lobby_count: Label = $JoinLobbyPanel/VBox/PlayerCountLabel
 @onready var _join_lobby_status: Label = $JoinLobbyPanel/VBox/StatusLabel
 @onready var _btn_lobby_leave: Button = $JoinLobbyPanel/VBox/BtnLeave
+@onready var _btn_lobby_navback: Button = $JoinLobbyPanel/VBox/NavBar/BtnNavBack
 
 @onready var _connecting_label: Label = $ConnectingPanel/Label
 @onready var _error_label: Label = $ErrorPanel/VBox/Label
@@ -57,9 +60,12 @@ func _ready() -> void:
 	_btn_copy_code.pressed.connect(_on_copy_code)
 	_btn_start_race.pressed.connect(_on_start_race_pressed)
 	_btn_create_back.pressed.connect(_on_back_to_root)
+	_btn_create_navback.pressed.connect(_on_back_to_root)
 	_btn_join_confirm.pressed.connect(_on_join_confirm_pressed)
 	_btn_join_back.pressed.connect(_on_back_to_root)
+	_btn_join_navback.pressed.connect(_on_back_to_root)
 	_btn_lobby_leave.pressed.connect(_on_back_to_root)
+	_btn_lobby_navback.pressed.connect(_on_back_to_root)
 	_btn_error_back.pressed.connect(_on_back_to_root)
 	_join_code_input.text_submitted.connect(func(_t): _on_join_confirm_pressed())
 	_join_code_input.text_changed.connect(_on_join_code_changed)
