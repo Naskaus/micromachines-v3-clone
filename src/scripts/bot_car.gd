@@ -290,12 +290,11 @@ func _physics_process(delta: float) -> void:
 		var perp: Vector3 = Vector3(-tangent.z, 0, tangent.x)  # 90° rotation in XZ
 		target += perp * racing_line_offset
 
-	# 2. Magnetic pull back to current phase if drifted off
+	# 2. Compute path proximity (used only for avoidance dodge direction now — NO magnetic pull)
 	var path_pt: Vector3 = PathUtils.path_at(_path_phase)
 	path_pt.y = pos.y
 	var to_path: Vector3 = path_pt - pos
 	to_path.y = 0.0
-	var off_path: float = to_path.length()
 
 	# 3. Physics inputs
 	var fwd: Vector3 = -transform.basis.z
@@ -313,10 +312,7 @@ func _physics_process(delta: float) -> void:
 			rubber = 1.0 + clamp(t_diff / 0.25, -1.0, 1.0) * RUBBER_MAX
 		_bot_top_speed = _base_top_speed * rubber
 
-	# 5. Magnetic pull
-	if off_path > OFF_PATH_THRESHOLD:
-		var pull: float = (off_path - OFF_PATH_THRESHOLD) * PATH_PULL_FORCE
-		apply_central_force(to_path.normalized() * pull * mass)
+	# 5. (Magnetic pull removed — was catapulting bots into walls. Steering alone keeps them on path.)
 
 	# 6. Steering: cross product fwd × to_target
 	var to_target: Vector3 = target - pos
@@ -386,9 +382,8 @@ func _physics_process(delta: float) -> void:
 	var lateral_correction: Vector3 = -right * lateral_speed * grip * delta
 	apply_central_impulse(lateral_correction * mass)
 
-	# 13. Advance _path_phase based on actual forward speed
-	if fwd_speed > 0.0:
-		_path_phase = wrapf(_path_phase + (fwd_speed / PathUtils.PATH_PERIMETER) * delta, 0.0, 1.0)
+	# 13. Re-anchor _path_phase to actual position each frame (no drift, no false lap detection)
+	_path_phase = PathUtils.phase_from_position(pos)
 
 	# 14. Particle FX
 	var back_dir: Vector3 = -fwd

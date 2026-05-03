@@ -389,9 +389,8 @@ func _physics_process(delta: float) -> void:
 	var lateral_correction: Vector3 = -right * lateral_speed * grip * delta
 	apply_central_impulse(lateral_correction * mass)
 
-	# --- Advance path phase based on actual forward speed (used by race_manager for progress + lap)
-	if fwd_speed > 0.0:
-		_path_phase = wrapf(_path_phase + (fwd_speed / PathUtils.PATH_PERIMETER) * delta, 0.0, 1.0)
+	# --- Re-anchor _path_phase to actual position each frame
+	_path_phase = PathUtils.phase_from_position(global_position)
 
 	# --- PARTICLE FX ---
 	# Direction updated each frame to match car backward in world frame (local_coords = false)
