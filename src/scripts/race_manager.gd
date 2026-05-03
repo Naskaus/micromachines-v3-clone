@@ -377,13 +377,11 @@ func _eliminate(racer: Node) -> void:
 		racer.freeze = true
 		racer.linear_velocity = Vector3.ZERO
 		racer.angular_velocity = Vector3.ZERO
-	# Visual: grey out and fade the body mesh so it's clear they're out
-	var mesh: MeshInstance3D = racer.get_node_or_null("MeshInstance3D") as MeshInstance3D
-	if mesh:
-		var grey: StandardMaterial3D = StandardMaterial3D.new()
-		grey.albedo_color = Color(0.25, 0.25, 0.25, 0.4)
-		grey.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-		mesh.set_surface_override_material(0, grey)
+	# Hide entirely + disable collision so the carcass doesn't litter the track as an invisible obstacle
+	racer.visible = false
+	for child in racer.get_children():
+		if child is CollisionShape3D:
+			child.disabled = true
 	_check_race_end()
 
 
