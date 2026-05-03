@@ -62,6 +62,54 @@ var _boost_trail: CPUParticles3D
 var _noise_phase: float = 0.0
 
 
+func _build_car_visual(body_color: Color) -> void:
+	var existing: Node = get_node_or_null("MeshInstance3D")
+	if existing and existing is MeshInstance3D:
+		existing.visible = false
+	var chassis: MeshInstance3D = MeshInstance3D.new()
+	var cm: BoxMesh = BoxMesh.new()
+	cm.size = Vector3(0.95, 0.30, 1.95)
+	chassis.mesh = cm
+	chassis.position = Vector3(0, -0.05, 0)
+	var chassis_mat: StandardMaterial3D = StandardMaterial3D.new()
+	chassis_mat.albedo_color = body_color
+	chassis_mat.roughness = 0.5
+	chassis_mat.metallic = 0.2
+	chassis.set_surface_override_material(0, chassis_mat)
+	add_child(chassis)
+	var cabin: MeshInstance3D = MeshInstance3D.new()
+	var cabin_m: BoxMesh = BoxMesh.new()
+	cabin_m.size = Vector3(0.75, 0.32, 0.95)
+	cabin.mesh = cabin_m
+	cabin.position = Vector3(0, 0.26, -0.05)
+	var cabin_mat: StandardMaterial3D = StandardMaterial3D.new()
+	cabin_mat.albedo_color = Color(body_color.r * 0.55, body_color.g * 0.55, body_color.b * 0.55, 1.0)
+	cabin_mat.roughness = 0.3
+	cabin.set_surface_override_material(0, cabin_mat)
+	add_child(cabin)
+	var wheel_positions: Array[Vector3] = [
+		Vector3(-0.48, -0.18, 0.62),
+		Vector3(0.48, -0.18, 0.62),
+		Vector3(-0.48, -0.18, -0.62),
+		Vector3(0.48, -0.18, -0.62),
+	]
+	for wpos in wheel_positions:
+		var wheel: MeshInstance3D = MeshInstance3D.new()
+		var wm: CylinderMesh = CylinderMesh.new()
+		wm.top_radius = 0.20
+		wm.bottom_radius = 0.20
+		wm.height = 0.16
+		wm.radial_segments = 10
+		wheel.mesh = wm
+		wheel.position = wpos
+		wheel.rotation_degrees = Vector3(0, 0, 90)
+		var wmat: StandardMaterial3D = StandardMaterial3D.new()
+		wmat.albedo_color = Color(0.07, 0.07, 0.07)
+		wmat.roughness = 0.95
+		wheel.set_surface_override_material(0, wmat)
+		add_child(wheel)
+
+
 func _make_smoke_emitter(local_offset: Vector3) -> CPUParticles3D:
 	var p: CPUParticles3D = CPUParticles3D.new()
 	p.position = local_offset
@@ -180,12 +228,8 @@ func _ready() -> void:
 	if player_path and not player_path.is_empty():
 		_player = get_node_or_null(player_path) as Node3D
 
-	# Recolor mesh
-	var mesh: MeshInstance3D = $MeshInstance3D
-	var src_mat: Material = mesh.get_active_material(0)
-	var mat: StandardMaterial3D = (src_mat.duplicate() if src_mat else StandardMaterial3D.new())
-	mat.albedo_color = bot_color
-	mesh.set_surface_override_material(0, mat)
+	# Replace placeholder box with chunky multi-mesh car (chassis + cabin + 4 wheels)
+	_build_car_visual(bot_color)
 	# Particle FX (drift smoke + boost trail)
 	_smoke_left = _make_smoke_emitter(Vector3(-0.45, 0.0, 0.95))
 	_smoke_right = _make_smoke_emitter(Vector3(0.45, 0.0, 0.95))
