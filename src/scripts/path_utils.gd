@@ -42,7 +42,8 @@ static func bridge_y(phase: float) -> float:
 static func path_at(phase: float) -> Vector3:
 	phase = wrapf(phase, 0.0, 1.0)
 	if phase < 0.5:
-		# Top oval CCW from south (crossing is at phase=0)
+		# Top oval CCW from south (crossing is at phase=0).
+		# Y rises here on the bridge window; bottom oval crosses at phase=0.5 (NOT in window) so it stays flat at Y=0.
 		var t: float = phase / 0.5
 		var angle: float = PI * 0.5 - t * TAU
 		return Vector3(OVAL_A * cos(angle), bridge_y(phase), -OVAL_H + OVAL_B * sin(angle))
