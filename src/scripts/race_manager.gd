@@ -111,6 +111,8 @@ func _ready() -> void:
 		_menu_label.text = "MICROMACHINES V3 CLONE\n\n[1]  1 JOUEUR  (A/D)\n[2]  2 JOUEURS  (A/D + J/L)\n\n[BACKSPACE] reset"
 		_menu_label.visible = true
 	_state = State.MENU
+	if AudioManager:
+		AudioManager.play_music("menu")
 
 
 func _register_racer(racer: Node, display_name: String, is_player: bool) -> void:
@@ -129,15 +131,22 @@ func _register_racer(racer: Node, display_name: String, is_player: bool) -> void
 
 
 func _start_countdown() -> void:
+	# F1-style: 3 short low beeps (1 per second) then 1 long high beep + GO
 	_state = State.COUNTDOWN
-	_update_leader_and_camera()  # focus camera on initial leader during countdown
+	_update_leader_and_camera()
 	for n in range(COUNTDOWN_SECONDS, 0, -1):
 		if _countdown_label:
 			_countdown_label.text = str(n)
 			_countdown_label.visible = true
+		if AudioManager:
+			AudioManager.play("countdown_beep", 0.0, 0.85)  # low beep
 		await get_tree().create_timer(1.0).timeout
 	if _countdown_label:
 		_countdown_label.text = "GO !"
+	if AudioManager:
+		AudioManager.play("go", 6.0, 1.4)  # bright high beep — race start
+		AudioManager.start_engine()
+		AudioManager.play_music("race")
 	await get_tree().create_timer(0.8).timeout
 	if _countdown_label:
 		_countdown_label.visible = false
@@ -175,13 +184,21 @@ func _on_arch_entered(body: Node, arch_idx: int) -> void:
 		data.last_lap_time = now
 		data.laps += 1
 		data.next_arch_index = 0
+		# Lap complete chime — player only
+		if data.is_player and AudioManager:
+			AudioManager.play("lap_complete", 0.0, 1.0)
 		if data.laps >= TOTAL_LAPS:
 			data.finished = true
 			data.finish_time = now - _race_start_time
 			_finish_order.append(body)
+			if data.is_player and AudioManager:
+				AudioManager.play("win", 4.0, 1.0)
 			_check_race_end()
 	else:
 		data.next_arch_index = arch_idx + 1
+		# Arch pass chime — subtle ding
+		if data.is_player and AudioManager:
+			AudioManager.play("arch_pass", -6.0, 1.3)
 
 
 func _check_race_end() -> void:

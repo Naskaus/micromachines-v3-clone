@@ -13,3 +13,6 @@ func _ready() -> void:
 func _on_body_entered(body: Node) -> void:
 	if body.has_method("apply_boost"):
 		body.apply_boost(boost_duration, boost_factor)
+		# Only play SFX for the player car (avoid bot-spam)
+		if body.get("player_id") != null and AudioManager:
+			AudioManager.play("boost")

@@ -287,6 +287,11 @@ func _on_collision_impact(_body: Node) -> void:
 		return  # ignore gentle bumps
 	var amount: float = clamp((v - 25.0) * 0.06, 0.4, 2.5)
 	_camera.add_shake(amount)
+	# Crash SFX — heavier sound at higher speed
+	if AudioManager:
+		var key: String = "hit_heavy" if v > 35.0 else "hit_light"
+		var pitch: float = clamp(0.9 + v * 0.005, 0.8, 1.3)
+		AudioManager.play(key, 0.0, pitch)
 
 
 func _effective_top_speed() -> float:
@@ -358,6 +363,11 @@ func _physics_process(delta: float) -> void:
 	var vel: Vector3 = linear_velocity
 	var fwd_speed: float = vel.dot(fwd)
 	var lateral_speed: float = vel.dot(right)
+
+	# Drive the global engine pitch from P1's forward speed
+	if player_id == 1 and AudioManager:
+		var ratio: float = clamp(absf(fwd_speed) / TOP_SPEED, 0.0, 1.5)
+		AudioManager.set_engine_speed_ratio(ratio)
 
 	# --- STEERING (2 buttons only) — read first because it modulates the effective top speed ---
 	var steer_input: float = 0.0
