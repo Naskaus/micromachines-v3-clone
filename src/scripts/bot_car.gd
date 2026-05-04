@@ -109,6 +109,9 @@ func _ready() -> void:
 	axis_lock_angular_z = true
 	linear_damp = 0.5
 	angular_damp = 4.0
+	# v0.19.0: bots on layer 2 collide with world + cars too.
+	collision_layer = 2
+	collision_mask = 1 | 2
 	_base_top_speed = TOP_SPEED * skill
 	_bot_top_speed = _base_top_speed
 	_noise_phase = randf_range(0.0, TAU)

@@ -56,6 +56,8 @@ var _race_started: bool = false
 var _orientation_initialized: bool = false
 var _last_was_portrait: bool = false
 var _pin_buffer: String = ""
+var _btn_elim_mode: Button = null
+var _elim_mode: String = "lives3"  # "lives3" | "perma"
 
 
 func _ready() -> void:
@@ -100,9 +102,47 @@ func _ready() -> void:
 		NetworkClient.player_left.connect(_on_net_player_left)
 		NetworkClient.race_start_signal.connect(_on_net_race_start)
 		NetworkClient.error_received.connect(_on_net_error)
+		NetworkClient.options_changed.connect(_on_net_options_changed)
+
+	# v0.19.0 — host-only "Mode" toggle in the lobby. Created programmatically
+	# so we don't have to hand-edit MultiplayerMenu.tscn.
+	_btn_elim_mode = Button.new()
+	_btn_elim_mode.text = "Mode : 3 VIES"
+	_btn_elim_mode.pressed.connect(_on_toggle_elim_mode)
+	var create_vbox: VBoxContainer = $CreateLobbyPanel/VBox as VBoxContainer
+	if create_vbox:
+		create_vbox.add_child(_btn_elim_mode)
+		# Move it just before the HBox (start/copy/share buttons) for visibility.
+		var hbox: Node = $CreateLobbyPanel/VBox/HBox
+		if hbox:
+			create_vbox.move_child(_btn_elim_mode, hbox.get_index())
+	_btn_elim_mode.visible = false  # only shown when we become host
 
 	_show_panel(Step.ROOT)
 	_set_connection_status("offline")
+
+
+func _on_toggle_elim_mode() -> void:
+	if not _is_host:
+		return
+	_elim_mode = "perma" if _elim_mode == "lives3" else "lives3"
+	_update_elim_mode_label()
+	if NetworkClient:
+		NetworkClient.set_elimination_mode(_elim_mode)
+
+
+func _update_elim_mode_label() -> void:
+	if _btn_elim_mode == null:
+		return
+	if _elim_mode == "perma":
+		_btn_elim_mode.text = "Mode : ÉLIMINATION"
+	else:
+		_btn_elim_mode.text = "Mode : 3 VIES"
+
+
+func _on_net_options_changed(options: Dictionary) -> void:
+	_elim_mode = str(options.get("elimination_mode", _elim_mode))
+	_update_elim_mode_label()
 
 
 func _show_panel(p: Step) -> void:
@@ -365,10 +405,14 @@ func _on_net_disconnected() -> void:
 		_show_error("Connexion perdue. Vérifie ton réseau.")
 
 
-func _on_net_room_joined(code: String, is_host: bool, _my_id: int, peers: Array) -> void:
+func _on_net_room_joined(code: String, is_host: bool, _my_id: int, peers: Array, options: Dictionary = {}) -> void:
 	_room_code = code
 	_is_host = is_host
 	_peers = peers.duplicate()
+	_elim_mode = str(options.get("elimination_mode", "lives3"))
+	_update_elim_mode_label()
+	if _btn_elim_mode:
+		_btn_elim_mode.visible = is_host
 	if is_host:
 		_create_code_label.text = code
 		_update_create_lobby_ui()
@@ -379,7 +423,7 @@ func _on_net_room_joined(code: String, is_host: bool, _my_id: int, peers: Array)
 		_show_panel(Step.JOIN_LOBBY)
 
 
-func _on_net_player_joined(player_id: int) -> void:
+func _on_net_player_joined(player_id: int, _role: String = "human") -> void:
 	if not _peers.has(player_id):
 		_peers.append(player_id)
 	if _current_step == Step.CREATE_LOBBY:

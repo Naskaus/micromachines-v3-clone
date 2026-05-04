@@ -1,164 +1,173 @@
-# NEXT SESSION — Prompt pour reprendre
+# NEXT SESSION — MicroNaskarV3
 
 > **Copier-coller ce prompt en début de session pour zéro perte de contexte.**
+> Last updated: 2026-05-04 (after V0.17.0-alpha + design pack v1 + multiplayer playtest)
 
 ---
 
-## Contexte projet
-
-Tu travailles sur **Micromachines V3 Clone** — un clone arcade racing dans Godot 4.6 inspiré de Micro Machines V3 PS1.
-
-**Path** : `/Users/bpia/Documents/Seb/Coding/naskaus/games/micromachines-v3-clone/`
-**Engine** : Godot 4.6 (binary `/Applications/Godot.app` symlink → `~/Downloads/06_Installers_DMG/Godot.app`)
-**MCP actif** : `godot-mcp` (run_project, stop_project, get_debug_output, get_godot_version, get_project_info)
-**Git** : repo local committed up to v0.15.0 — pas encore pushé sur GitHub
-**User** : Sebastien (FR), itère vite, donne feedback court → pousse à shipper sans surengineering
-
-## État actuel — V0.15.0 (2026-05-03)
-
-**Ce qui marche** :
-- 6 racers (P1, P2 + 4 bots) avec modèles Kenney `.glb` colorés
-- Track **figure-8** (2 ovales tangents au crossing z=0) avec shader pool felt + lignes blanches
-- **4 arches checkpoint** colorées (vert/jaune/orange/rouge) placées en racing order :
-  - Arch 1 (vert/start) : phase 0.97 → world (-37, 4, +3.5) — west of crossing
-  - Arch 2 (jaune) : phase 0.25 → world (0, 4, -100) — top extremity
-  - Arch 3 (orange) : phase 0.53 → world (+37, 4, +3.5) — east of crossing
-  - Arch 4 (rouge) : phase 0.75 → world (0, 4, +100) — bottom extremity
-- **Lap validation** : `next_arch_index` (0..3). Racer doit passer arch 0 → 1 → 2 → 3 dans l'ordre. Skip une arche → la suivante ignorée. Hit arch 3 → lap += 1, reset à 0.
-- **Spawn 6 cars** en grid 3 rows × 2 cols, en arrière de Arch 1 (phases 0.96 / 0.93 / 0.90 sur le bottom oval), tangent-aligned, ±3m perpendiculaire. Plus de spawn DANS un checkpoint area.
-- **Ranking** : `laps + next_arch_index*0.25 + phase*0.001` — granularité fine, défait les cheaters qui tournent en rond.
-- AI bots suivent le path, catch-up rubber-banding, boost pads × 4, drift smoke + boost flame trail
-- Speedometer + minimap, camera shake on boost+collision, 1P/2P selector, eliminated cars vanish
-
-**Code review du V0.15.0** : APPROVED_WITH_NITS (`bridge_y` math pure, signature signal `_on_arch_entered(body, arch_idx)` corrigée après bug initial).
-
-## Reportés à V0.15.1+ (math complexe)
-
-**Bridge 3D au crossing** : `path_utils.gd::bridge_y()` est en place (sinusoide 0→5→0 sur fenêtre [0.95, 0.05]), MAIS :
-1. Discontinuité Y à phase=1.0/0.0 (appliqué seulement sur top oval) — fix : appliquer aussi sur bottom oval
-2. Phase ≠ proximité au crossing : phase=0.95 = world (-58, 0, +9.5), pas adjacent au crossing → géométrie pont droite ne suit pas le racing line courbe
-3. Crossing = tangent (les 2 strands vont EST), pas un X-crossing comme un vrai ∞
-
-**3 options pour V0.15.1** (à discuter avec Seb avant de coder) :
-- A. Resserrer fenêtre `[0.99, 0.01]` (~25m total), pont droit sur ce span. Visuel = highway stacké est-est, pas X-crossing.
-- B. Redesign path_utils → ovaux qui se chevauchent (centres à ±40 au lieu de ±50). Vrai ∞ avec X-crossing à 60°. Touche tout : path_utils, race_manager, bot_car, minimap.
-- C. Lemniscate de Bernoulli (`r²=2a²cos(2θ)`). Courbe ∞ pure. Réécriture totale du path system.
-
-**Bot Y tracking sur le pont** : à câbler dans `bot_car.gd::_physics_process` (P-controller force vers `path_at(phase).y + 0.5` quand y > 0.5). Reporté car bridge geometry pas encore décidée.
-
-## Pitfalls Godot critiques (saved with blood)
-
-1. **GLB external textures DROPPED at headless import** : Kenney `colormap.png` référencé en chemin relatif → Godot le perd. Fix : `set_surface_override_material` au runtime via `_apply_colormap_to_meshes()` (voir `car.gd` / `bot_car.gd`).
-2. **Transform3D float constructor ROW-MAJOR** : 9 floats en row-major (xx,yx,zx, xy,yy,zy, xz,yz,zz). East-facing yaw=-90° = `Transform3D(0,0,-1, 0,1,0, 1,0,0, ox,oy,oz)`.
-3. **`class_name` registration unreliable** : ne s'enregistre pas toujours avant compilation des autres scripts. Fix : `const PathUtils = preload("res://scripts/path_utils.gd")` partout.
-4. **`RigidBody3D.freeze=true` ne stoppe pas physics proprement** : early-return `if freeze: return` au top de chaque `_physics_process` pour cars/bots.
-5. **Magnetic pull-back catapulte** : `apply_central_force(direction * magnitude * mass)` escalade vite — supprimé V0.14.2.
-6. **Signal bind() args APPEND, not prepend** : `arch.body_entered.connect(_on_arch_entered.bind(i))` envoie `(body, i)` à la callable, pas `(i, body)`. Signature : `func _on_arch_entered(body: Node, arch_idx: int)`.
-
-## Workflow
-
-À chaque modif :
-1. `mcp__godot-mcp__stop_project` puis `run_project` puis `get_debug_output`
-2. Vérifier 0 errors avant de commit
-3. `git add -A && git commit -m "vX.Y.Z: description"`
-4. Phrasing FR court à Seb : "Fait X, ça change Y, va tester"
-
-## Règle Seb
-
-- **Ship vite, itère vite** — petits commits incrementaux
-- **Vérifier visuellement** quand possible (debug prints, screenshots si dispo)
-- **Ne pas prétendre que c'est fait** sans vérification
-- **0 erreur Godot** avant chaque ship
-- **Toujours commit avant de quitter**
-
-## Constants importants
-
-- `PathUtils.OVAL_A = 100.0`, `OVAL_B = 50.0`, `OVAL_H = 50.0`
-- `PATH_PERIMETER ≈ 471 m`
-- `BRIDGE_PHASE_START = 0.95`, `BRIDGE_PHASE_END = 0.05`, `BRIDGE_HEIGHT = 5.0` (dormant — wired top branch only, pas utilisé encore)
-- `TOTAL_LAPS = 3`, `MIN_LAP_TIME = 4.0` s, `ELIMINATION_DIST_FROM_LEADER = 120.0` m
-- `TOP_SPEED = 42 m/s`, `ACCEL = 20 m/s²`
-- `boost_pad`: factor=1.75, duration=1.2s
-- `PLAYER_RUBBER_MAX = 0.80`, `RUBBER_MAX = 0.50` (bot vs P1)
-
-## Fichiers clés
+## Prompt à coller
 
 ```
-src/
-├── project.godot
-├── scripts/
-│   ├── path_utils.gd          # Figure-8 math + bridge_y() (dormant)
-│   ├── car.gd                  # Player car
-│   ├── bot_car.gd              # AI bot
-│   ├── race_manager.gd         # 4-arch ordered validation
-│   ├── camera_follow.gd        # Multi-target camera + shake
-│   ├── minimap.gd              # Figure-8 minimap
-│   └── boost_pad.gd            # Area3D trigger
-├── scenes/
-│   ├── Main.tscn               # 6 cars (new spawn grid) + RaceManager wired with arch_paths
-│   ├── Car.tscn / BotCar.tscn  # RigidBody3D + PhysicsMaterial(friction=0)
-│   └── Track01.tscn            # Floor + walls + 4 arches (Arch_1..Arch_4) + 4 boost pads
-└── assets/
-    ├── pool_felt.gdshader      # Felt + figure-8 chalk lines
-    ├── cars/                   # 49 Kenney car .glb + Textures/colormap.png
-    └── track_pieces/           # 90+ Kenney racing-kit .glb
-```
+Je reprends le travail sur MicroNaskarV3 (clone arcade racing PS1, Godot 4.6,
+deployé sur mv3.naskaus.com). État actuel: V0.17.0-alpha. Solo OK. Multiplayer
+2 joueurs en réseau OK pour create/join/start MAIS 6 design gaps identifiés
+2026-05-04 qui touchent à l'ADN MMV3.
 
-## Git history (récent)
+Lis les 3 docs avant de toucher au code:
+1. /Users/bpia/Documents/Seb/Coding/naskaus/games/micromachines-v3-clone/CLAUDE.md
+2. /Users/bpia/Documents/Seb/Coding/naskaus/games/micromachines-v3-clone/docs/superpowers/specs/2026-05-04-mv3-multiplayer-mmv3-feel.md (LE PLAN)
+3. /Users/bpia/Documents/Seb/Coding/naskaus/games/micromachines-v3-clone/docs/superpowers/specs/2026-05-03-micronaskar-v3-design-pack.md (visuels livrés)
 
-```
-v0.15.0    : 4 arches + ranking refactor + spawn grid (4 commits squashable, ou tagged on 452f551+)
-v0.14.3-baseline : safety net tag avant V0.15.0 (= dac2b4d)
-v0.14.3-handoff → v0.14.3 (2-checkpoint validation) → v0.14.2 (kill magnetic pull) → v0.14.1 → v0.14 (figure-8) → v0.13.x (Kenney) → v0.12 → v0.10.x → v0.9.x
-```
-
-## TODO
-
-- [x] V0.15.0 : 4 arches + ranking + spawn fix (DONE 2026-05-03)
-- [ ] V0.15.1 : décider A/B/C bridge geometry + l'implémenter
-- [ ] V0.15.2 : remplacer arches box-mesh par Kenney `overhead.glb` + bannerTowerRed
-- [ ] V0.15.3 : décorations Kenney (~30-50 .glb procédural autour du circuit)
-- [ ] Push GitHub : `gh repo create Naskaus/micromachines-v3-clone --private --source=. --push`
-- [ ] V0.16+ : MMV3-style tracks (pool table cards, garden, picnic plaid — voir `docs/inspiration/mmv3-references.md`)
-- [ ] V0.17+ : sound
-
-## Mémoire associée
-
-- `~/.claude/projects/-Users-bpia-Documents-Seb-Coding-naskaus-lab/memory/projects/micromachines-v3-clone.md`
-- `~/.claude/projects/-Users-bpia-Documents-Seb-Coding-naskaus-lab/memory/feedback/godot-game-iteration.md`
-- `docs/superpowers/plans/2026-05-03-figure-infinity-bridge-arches.md` (plan original V0.15.0, partiellement exécuté — bridge tasks 3+6 reportées)
-- `docs/inspiration/mmv3-references.md` (7 screenshots MMV3 PS1 + analyse design)
-
-## Prompt à coller en début de session
-
-```
-Reprise de Micromachines V3 Clone (V0.15.0 → V0.15.1).
-Lis NEXT_SESSION.md à la racine du projet pour le contexte.
-Path : /Users/bpia/Documents/Seb/Coding/naskaus/games/micromachines-v3-clone/
-Priority 1 : décider option A/B/C pour le bridge 3D au crossing puis l'implémenter (voir section "Reportés à V0.15.1+").
-Vérifie git log + état avant de coder. Workflow : stop_project → edit → run_project → get_debug_output → 0 errors → git commit vX.Y.Z → terse FR update.
+Le plan multiplayer attend mon GO sur 3 forks (A=authority, B=camera, C=elimination).
+Lis le plan, propose un résumé 5 lignes, puis pose-moi les questions d'approbation
+des Forks (§2 du plan) + les 5 questions ouvertes (§7).
 ```
 
 ---
 
-## 🌐 V0.20+ — Multiplayer Online (planifié 2026-05-03)
+## État actuel — V0.17.0-alpha (2026-05-04)
 
-### Architecture
-WebSocket relay sur Pi5 port 8060, exposé via Cloudflare tunnel `mv3-server.naskaus.com`. Pas de WebRTC P2P (NAT traversal galère).
+**SHIPPED depuis V0.14.3 (2026-05-03 AM):**
+- V0.15.x: figure-8 6-arches checkpoint system, jump ramp, décor 270 toy items + 18 food items, audio Kenney
+- V0.16.x: Web export GLES Compat (mv3.naskaus.com live), TouchInput mobile, leaderboard totem PS1, mute buttons, fullscreen toggle, bot rubber-banding fix critique
+- V0.17.0-alpha: **multiplayer foundation** — Pi5 Python WSS server (port 8060, room codes 4 digits, max 6 players), Cloudflare tunnel `wss://mv3-server.naskaus.com`, autoload `network_client.gd`, scripts `multiplayer_manager.gd` + `multiplayer_menu.gd` + `ghost_car.gd`. UI lobby Create/Join/Start fonctionne. 2 joueurs peuvent rejoindre une salle et démarrer une course.
 
-### 5 phases (~5-7 jours total)
-1. **Bases tech** (2j) : server Node.js + WebSocket, refactor car.gd input→message, client interpolation, test 2P même WiFi
-2. **Lobby + room codes** (1.5j) : menu Create/Join Room, code 4-lettres, QR code pour join mobile, liste players
-3. **Polish** (1j) : disconnect handling, reconnect, lag compensation prédiction client
-4. **Persistance** (1j, optionnel) : profiles Supabase, leaderboards globaux par circuit, best lap times publics
-5. **Deploy** (0.5j) : cron auto-restart, monitoring Grafana
+**Solo (V0.17.0-alpha):** ✅ Le feel est BON. Seb a explicitement dit "garde ces réglages pour le moment". Ne pas toucher aux constantes solo.
 
-### Stack
-- Server : Node.js + `ws` OU Godot dedicated server headless ARM
-- DB : Supabase (déjà dans l'écosystème Naskaus)
-- Hosting : Pi5 + Cloudflare tunnel + nginx
-- Client : Godot WebSocketMultiplayerPeer (built-in, marche web export)
+**Multiplayer (V0.17.0-alpha):** ⚠️ Fonctionne techniquement (réseau OK, ghosts rendus) mais 6 design gaps (voir plan).
 
-### Coûts
-- Infra : 0€ (Pi5 + Cloudflare)
-- Maintenance : ~1h/mois
+---
+
+## Les 6 design gaps (Seb 2026-05-04 playtest)
+
+| # | Symptôme | Fix prévu | Phase |
+|---|---|---|---|
+| P1 | Pas de bots dans les rooms MP | Host envoie aussi les états des bots | 3.1 |
+| P2 | Les 2 humains terminent toujours 1ers | Host = autorité ranking, broadcast race_state @ 5Hz | 3.2 |
+| P3 | Chacun a sa propre vue | Shared leader-cam (seul le leader cadre) | 3.3 |
+| P4 | Stragglers off-screen non éliminés | Système 3-vies + respawn back of pack | 3.3 |
+| P5 | Voitures se traversent | Ghost cars deviennent CharacterBody3D + CollisionShape3D | 3.4 |
+| P6 | Besoin d'un gros peloton | Auto-fill 6 cars (humains + bots) | 3.1 |
+
+---
+
+## Architecture multiplayer actuelle
+
+```
+Mac (Seb host)                                     Phone (peer)
+  └─ Godot client                                    └─ Web build (mv3.naskaus.com)
+      ├─ network_client.gd (WS client)                   ├─ network_client.gd
+      ├─ race_manager.gd (LOCAL ranking)                 ├─ race_manager.gd (LOCAL ranking) ← bug P2
+      ├─ multiplayer_manager.gd                          ├─ multiplayer_manager.gd
+      │   └─ send local state @ 20Hz                     │   └─ send local state @ 20Hz
+      │   └─ spawn ghost_car per peer ← visual only      │   └─ spawn ghost_car per peer ← visual only
+      └─ camera_follow → local car (P3 bug)              └─ camera_follow → local car (P3 bug)
+                ▲                                                 ▲
+                └────────── WSS relay (Pi5) ─────────────────────┘
+                            mv3-server.naskaus.com
+                            (mv3_server.py, port 8060)
+                            PURE RELAY — no auth, no physics
+```
+
+## Architecture cible (Phase 3 plan)
+
+```
+Mac (Seb HOST = AUTHORITATIVE)                     Phone (CLIENT = render only)
+  └─ Godot client                                    └─ Web build
+      ├─ network_client.gd                               ├─ network_client.gd
+      ├─ race_manager.gd (FULL SIM)                      ├─ race_manager.gd (RENDER MODE)
+      │   ├─ ranking, laps, eliminations                 │   └─ display server's race_state
+      │   ├─ bots AI                                     │
+      │   └─ broadcast race_state @ 5Hz                  │
+      ├─ multiplayer_manager.gd                          ├─ multiplayer_manager.gd
+      │   └─ send local human state @ 20Hz               │   └─ send local human state @ 20Hz
+      │   └─ ALSO send all bot states @ 20Hz             │
+      ├─ ghost_car.gd (PHYSICAL — CharacterBody3D)       ├─ ghost_car.gd (PHYSICAL)
+      ├─ elimination_manager.gd (NEW)                    ├─ elimination_manager.gd
+      │   └─ track off-screen 1.5s → -1 life → respawn   │
+      └─ camera_follow → SHARED LEADER (from race_state) └─ camera_follow → SHARED LEADER
+                ▲                                                 ▲
+                └────────── WSS relay (Pi5) ─────────────────────┘
+                            mv3-server.naskaus.com v0.18.0
+                            (broadcast race_state added, still relay-only)
+```
+
+---
+
+## Files importants
+
+| File | LOC | Rôle | Touché par Phase 3 ? |
+|---|---|---|---|
+| `server/mv3_server.py` | ~130 | WSS relay | ✅ +40 LOC (race_state passthrough) |
+| `src/scripts/network_client.gd` | 188 | WS autoload, signals room/peer | ✅ +30 LOC |
+| `src/scripts/multiplayer_manager.gd` | 117 | Send state, spawn/update ghosts | ✅ +80 LOC (bot sync) |
+| `src/scripts/race_manager.gd` | 700 | Race orchestrator (laps, ranking, leader, elimination) | ✅ +120 LOC (auth split) |
+| `src/scripts/camera_follow.gd` | 87 | Multi-target chase cam (déjà support leader-cam) | ✅ +25 LOC (`is_on_screen`) |
+| `src/scripts/ghost_car.gd` | 127 | Visual-only Node3D pour peers remote | ✅ +60 LOC (→ CharacterBody3D) |
+| `src/scripts/car.gd` | 435 | Local human/bot RigidBody3D | ✅ +5 LOC (collision_mask) |
+| `src/scripts/bot_car.gd` | 408 | AI bot path-following | (probably untouched) |
+| `src/scripts/elimination_manager.gd` | — | NEW ~100 LOC | ✅ NEW |
+
+---
+
+## GitHub state
+
+- **Repo:** `Naskaus/micromachines-v3-clone` PUBLIC
+- **Last tag:** `v0.17.0-alpha` (2026-05-03)
+- **Branch:** main, 0 ahead origin/main au moment où je rédige
+- **Pi5 services:** `mv3-server.service` active, Cloudflare tunnel actif
+- **Live URL game:** https://mv3.naskaus.com
+- **Live URL WSS:** wss://mv3-server.naskaus.com
+
+## Pi5 commands
+
+```bash
+# Verify WSS server status
+ssh -i ~/.ssh/id_claude_mcp seb@100.119.245.18 "sudo systemctl status mv3-server.service"
+
+# Tail server logs
+ssh -i ~/.ssh/id_claude_mcp seb@100.119.245.18 "sudo journalctl -u mv3-server.service -f"
+
+# Redeploy server after edits
+scp -i ~/.ssh/id_claude_mcp server/mv3_server.py seb@100.119.245.18:/opt/mv3-server/mv3_server.py
+ssh -i ~/.ssh/id_claude_mcp seb@100.119.245.18 "sudo systemctl restart mv3-server.service"
+```
+
+---
+
+## Design pack v1 (livré 2026-05-03)
+
+12 PNG sous `assets/branding/` :
+- 2 logos (`logos/micronaskar_v3_logo_horizontal.png` + `_square.png`)
+- 4 backgrounds (`backgrounds/bg_menu_main_16x9.png`, `bg_menu_portrait_9x16.png`, `bg_podium_results.png`, `hero_splash_keyart.png`)
+- 6 helmets (`helmets/helmet_01_green.png` ... `helmet_06_purple.png`)
+
+Pas encore intégrés in-engine. Voir doc `2026-05-03-micronaskar-v3-design-pack.md` pour code GDScript de loading.
+
+Stack: Z-Image Turbo BF16 local sur ComfyUI 0.19.0 (port 8000, MPS M4 Max). Reproductible via `/tmp/zimage_batch.py`. Logos peuvent bénéficier d'un V2 via Gemini Nano Banana 2 quand quota free tier reset.
+
+---
+
+## Pitfalls Godot saved with blood (rappel V0.14.x)
+
+1. **GLB external textures DROPPED at headless import** → fix `set_surface_override_material` + colormap atlas runtime via `_apply_colormap_to_meshes()` recursif.
+2. **`Transform3D` float constructor row-major** : basis stocké en 3 ROWS, pas COLUMNS. East-facing yaw=-90° = `Transform3D(0,0,-1, 0,1,0, 1,0,0, ...)`.
+3. **`class_name` registration pas fiable** → `const PathUtils = preload("res://scripts/path_utils.gd")`.
+4. **`RigidBody3D.freeze=true` ne stoppe pas physics proprement** → `if freeze: return` early-return dans `_physics_process`.
+5. **Magnetic pull-back forces escaladent** → kill them, use `_path_phase = PathUtils.phase_from_position(global_position)` chaque frame.
+6. **Signal bind() args APPEND not prepend** : `_on_arch_entered(body, arch_idx)` pas `(arch_idx, body)`.
+7. **Web export = GLES Compatibility renderer** (Forward+ ne marche pas browser).
+8. **Audio = ALWAYS check mute_button.gd state before AudioStreamPlayer3D.play()**.
+
+---
+
+## Approval gate (Phase 3 NE PAS DÉMARRER avant ça)
+
+**Avant tout code, Seb doit valider:**
+
+1. **Fork A — Authority model:** A1 (host-authoritative) recommandé. Alternatives A2 (server) et A3 (lock-step relay) listées dans le plan §2.
+2. **Fork B — Camera in MP:** B1 (shared leader-cam) recommandé. Alternatives B2 (split view, status quo) et B3 (multi-target zoom) listées.
+3. **Fork C — Elimination penalty:** C1 (3 lives + respawn back of pack) recommandé. Alternatives C2 (perma-elim) et C3 (no penalty) listées.
+4. **5 questions ouvertes §7 du plan:** lives count, elimination semantics, bot auto-fill, host advantage warning, mobile UX.
+
+Une fois validé → invoque `superpowers:executing-plans` sur le plan.

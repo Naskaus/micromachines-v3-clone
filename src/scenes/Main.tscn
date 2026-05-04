@@ -1,4 +1,4 @@
-[gd_scene load_steps=16 format=3]
+[gd_scene load_steps=17 format=3]
 
 [ext_resource type="PackedScene" path="res://scenes/Track01.tscn" id="1_track"]
 [ext_resource type="PackedScene" path="res://scenes/Car.tscn" id="2_car"]
@@ -12,6 +12,7 @@
 [ext_resource type="PackedScene" path="res://scenes/MultiplayerMenu.tscn" id="10_mpmenu"]
 [ext_resource type="Script" path="res://scripts/multiplayer_manager.gd" id="11_mpmgr"]
 [ext_resource type="Script" path="res://scripts/menu_button.gd" id="12_menu"]
+[ext_resource type="Script" path="res://scripts/elimination_manager.gd" id="13_elim"]
 
 [sub_resource type="StyleBoxFlat" id="SBF_menu_btn"]
 content_margin_left = 14.0
@@ -294,10 +295,28 @@ script = ExtResource("8_lb")
 
 [node name="MultiplayerMenu" parent="HUD" instance=ExtResource("10_mpmenu")]
 
+[node name="LivesLabel" type="Label" parent="HUD"]
+offset_left = 20.0
+offset_top = 200.0
+offset_right = 260.0
+offset_bottom = 360.0
+theme_override_colors/font_color = Color(1, 0.85, 0.3, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 5
+theme_override_font_sizes/font_size = 18
+
 [node name="MultiplayerManager" type="Node" parent="."]
 script = ExtResource("11_mpmgr")
 local_player_path = NodePath("../P1_Red")
 ghost_parent_path = NodePath("..")
+bot_paths = [NodePath("../Bot1_Blue"), NodePath("../Bot2_Yellow"), NodePath("../Bot3_Green"), NodePath("../Bot4_Purple")]
+
+[node name="EliminationManager" type="Node" parent="."]
+script = ExtResource("13_elim")
+camera_path = NodePath("../Camera3D")
+race_manager_path = NodePath("../RaceManager")
+multiplayer_manager_path = NodePath("../MultiplayerManager")
+hud_lives_label_path = NodePath("../HUD/LivesLabel")
 
 [node name="RaceManager" type="Node" parent="."]
 script = ExtResource("5_race")
@@ -312,3 +331,5 @@ results_label_path = NodePath("../HUD/ResultsLabel")
 speedometer_label_path = NodePath("../HUD/SpeedometerLabel")
 multiplayer_menu_path = NodePath("../HUD/MultiplayerMenu")
 multiplayer_manager_path = NodePath("../MultiplayerManager")
+elimination_manager_path = NodePath("../EliminationManager")
+lives_label_path = NodePath("../HUD/LivesLabel")

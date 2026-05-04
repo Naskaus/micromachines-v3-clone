@@ -1,22 +1,22 @@
 extends Camera3D
 
-# Multi-target chase cam — follows the midpoint of all assigned targets, with adaptive height
-# that zooms out when targets spread apart. Single-target mode (target_path) is preserved for
-# backward compat (used by V0.4 single-player).
+# Multi-target chase cam. Single-target = behind-the-leader chase. Multi-target
+# = midpoint with adaptive zoom. v0.19.0 added is_on_screen(node) for the
+# elimination_manager's off-screen tracker.
 
-@export var target_path: NodePath  # legacy single-target (used by V0.4)
-@export var target_paths: Array[NodePath] = []  # multi-target (V0.5+)
-@export var height: float = 22.0       # base height above midpoint
-@export var max_height: float = 80.0   # cap when targets are far apart
-@export var zoom_per_meter: float = 0.18  # +0.18m height per 1m of separation
-@export var back_offset: float = 6.0   # backward offset (in -Z direction = "north")
+@export var target_path: NodePath
+@export var target_paths: Array[NodePath] = []
+@export var height: float = 22.0
+@export var max_height: float = 80.0
+@export var zoom_per_meter: float = 0.18
+@export var back_offset: float = 6.0
 @export var smoothing: float = 5.0
+@export var off_screen_margin: float = 8.0  # m — counted off-screen if outside frustum + this margin
 
 var _targets: Array = []
 
-# Shake state — public via add_shake() from car/race events
 var _shake_intensity: float = 0.0
-const SHAKE_DECAY := 6.0  # decays per second
+const SHAKE_DECAY := 6.0
 
 
 func add_shake(amount: float) -> void:
@@ -35,7 +35,6 @@ func _ready() -> void:
 			_targets.append(t)
 
 
-# Replace the active target list (used by race_manager mode selector + leader switching).
 func set_targets_to(nodes: Array) -> void:
 	_targets.clear()
 	for n in nodes:
@@ -43,24 +42,39 @@ func set_targets_to(nodes: Array) -> void:
 			_targets.append(n)
 
 
-# Used by race_manager to switch to single-target leader chase mode.
 func set_leader_target(node: Node3D) -> void:
 	if node == null:
 		return
 	set_targets_to([node])
 
 
+func is_on_screen(node: Node3D) -> bool:
+	# Used by elimination_manager to detect MMV3-style off-screen stragglers.
+	# We accept points slightly outside the frustum (off_screen_margin in world
+	# units along the camera-forward plane) so a car kissing the edge isn't
+	# flagged as out.
+	if node == null or not is_inside_tree():
+		return false
+	var pos: Vector3 = node.global_position
+	if is_position_in_frustum(pos):
+		return true
+	# Margin check: shift the test point slightly toward the camera and re-test.
+	var to_cam: Vector3 = (global_position - pos)
+	if to_cam.length() < 0.01:
+		return true
+	to_cam = to_cam.normalized()
+	return is_position_in_frustum(pos + to_cam * off_screen_margin)
+
+
 func _physics_process(delta: float) -> void:
 	if _targets.is_empty():
 		return
 
-	# Compute midpoint of all targets
 	var midpoint: Vector3 = Vector3.ZERO
 	for t in _targets:
 		midpoint += t.global_position
 	midpoint /= float(_targets.size())
 
-	# Find max distance from midpoint to any target — drives the zoom-out
 	var max_dist: float = 0.0
 	for t in _targets:
 		var d: float = t.global_position.distance_to(midpoint)
@@ -69,8 +83,6 @@ func _physics_process(delta: float) -> void:
 
 	var adaptive_height: float = clamp(height + max_dist * zoom_per_meter, height, max_height)
 
-	# Single target: use the existing chase-cam (behind in target's local frame).
-	# Multi-target: position straight above midpoint, with small +Z back offset.
 	var jitter: Vector3 = Vector3.ZERO
 	if _shake_intensity > 0.001:
 		jitter = Vector3(randf_range(-1, 1), randf_range(-1, 1), randf_range(-1, 1)) * _shake_intensity

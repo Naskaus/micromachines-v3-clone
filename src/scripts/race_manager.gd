@@ -2,37 +2,41 @@ extends Node
 
 const PathUtils = preload("res://scripts/path_utils.gd")
 
-# Race orchestrator — countdown → lap counting → win condition → results.
-# Cars are frozen during pre-race + countdown, unfrozen on GO, frozen again on race end.
-# V0.5: supports multiple human players (racers tagged "is_player").
-# V0.6: camera follows the LEADER (highest race progress). Stragglers more than
-# ELIMINATION_DIST_FROM_LEADER from the leader are eliminated (frozen + greyed).
-# Race ends when only 1 active racer remains, OR all human players done/eliminated,
-# OR a player completes TOTAL_LAPS.
+# Race orchestrator — solo + MP-host mode runs full simulation locally and
+# pushes per-racer state up to the server. MP-client mode renders the server's
+# race_state instead of computing its own ranking.
+#
+# v0.19.0 (Phase 3) changes:
+#   * Sets meta on each racer (race_laps / race_next_arch / race_finished) so
+#     multiplayer_manager can include them in state packets.
+#   * In MP-client mode, _state_runs_locally = false → skip arch detection,
+#     elimination, leader pick. Subscribe to NetworkClient.race_state_received
+#     and use that for HUD + camera leader.
+#   * Wires elimination_manager once the race starts.
 
 const TOTAL_LAPS := 3
 const COUNTDOWN_SECONDS := 3
-const MIN_LAP_TIME := 4.0    # debounce — must be < fastest possible lap
-const ELIMINATION_DIST_FROM_LEADER := 120.0  # m — racers beyond this are eliminated
-const LEADER_CHANGE_HYSTERESIS := 0.03  # 3% lap progress buffer to avoid camera flicker
-const POST_FIRST_FINISH_TIMEOUT := 18.0  # extra seconds for stragglers (bots) after the first racer crosses the line
-
-# Figure-8 path constants live in PathUtils.gd
+const MIN_LAP_TIME := 4.0
+const ELIMINATION_DIST_FROM_LEADER := 120.0  # m — solo fallback only
+const LEADER_CHANGE_HYSTERESIS := 0.03
+const POST_FIRST_FINISH_TIMEOUT := 18.0
 
 enum State { MENU, PRE_RACE, COUNTDOWN, RACING, FINISHED }
 
-@export var player_paths: Array[NodePath] = []  # human players (P1, P2, ...)
+@export var player_paths: Array[NodePath] = []
 @export var bot_paths: Array[NodePath] = []
-@export var finish_line_path: NodePath  # legacy — unused now
-@export var arch_paths: Array[NodePath] = []  # 4 arches in racing order (Arch_1..Arch_4); lap = pass all 4 in order
-@export var camera_path: NodePath  # camera follows the current leader
+@export var finish_line_path: NodePath
+@export var arch_paths: Array[NodePath] = []
+@export var camera_path: NodePath
 @export var menu_label_path: NodePath
 @export var countdown_label_path: NodePath
 @export var race_info_label_path: NodePath
 @export var results_label_path: NodePath
 @export var speedometer_label_path: NodePath
-@export var multiplayer_menu_path: NodePath  # MultiplayerMenu scene wired here
-@export var multiplayer_manager_path: NodePath  # MultiplayerManager node
+@export var multiplayer_menu_path: NodePath
+@export var multiplayer_manager_path: NodePath
+@export var elimination_manager_path: NodePath
+@export var lives_label_path: NodePath
 
 var _state: State = State.MENU
 var _race_start_time: float = 0.0
@@ -43,7 +47,7 @@ var _finish_order: Array = []
 var _eliminated: Array = []
 var _current_leader: Node = null
 var _num_players: int = 1
-var _first_finish_time: float = -1.0  # set when the first racer crosses the line
+var _first_finish_time: float = -1.0
 
 var _camera: Node = null
 var _menu_label: Label
@@ -53,15 +57,21 @@ var _results_label: Label
 var _speedometer_label: Label
 var _multiplayer_menu: Node = null
 var _multiplayer_manager: Node = null
+var _elimination_manager: Node = null
+var _lives_label: Label
 var _is_network_race: bool = false
+var _is_network_host: bool = false
+# Network state runs locally for solo + MP-host. Off for MP-client (server is authority).
+var _state_runs_locally: bool = true
+# Cache of latest authoritative race_state from server, used by MP-client renderer.
+var _last_race_state: Dictionary = {}
 
-# Cached arch references for dynamic highlight (next-target glow)
 const ARCH_COLOR_NAMES: Array[String] = ["VERTE", "JAUNE", "ORANGE", "CYAN", "ROUGE", "VIOLETTE"]
-const HIGHLIGHT_EMISSION := 4.0  # multiplier on the next arch
-const NORMAL_EMISSION := 1.5     # baseline
+const HIGHLIGHT_EMISSION := 4.0
+const NORMAL_EMISSION := 1.5
 var _arch_nodes: Array[Area3D] = []
-var _arch_meshes: Array = []  # array of arrays — _arch_meshes[i] = [PillarLeft, PillarRight, Crossbar]
-var _arch_phases: Array[float] = []  # path_phase at each arch's center, computed at _ready
+var _arch_meshes: Array = []
+var _arch_phases: Array[float] = []
 var _last_highlighted_idx: int = -1
 
 
@@ -71,6 +81,7 @@ func _ready() -> void:
 	_race_info_label = get_node_or_null(race_info_label_path) as Label
 	_results_label = get_node_or_null(results_label_path) as Label
 	_speedometer_label = get_node_or_null(speedometer_label_path) as Label
+	_lives_label = get_node_or_null(lives_label_path) as Label
 	_camera = get_node_or_null(camera_path)
 
 	for i in range(player_paths.size()):
@@ -84,22 +95,16 @@ func _ready() -> void:
 		if b:
 			_register_racer(b, b.name, false)
 
-	# Wire 4 arches — lap requires passing them in order (0→1→2→3→0)
-	# Also cache mesh children for dynamic emission tweaks (highlight next arch).
 	for i in range(arch_paths.size()):
 		var arch: Area3D = get_node_or_null(arch_paths[i]) as Area3D
 		if arch:
 			arch.body_entered.connect(_on_arch_entered.bind(i))
 			_arch_nodes.append(arch)
-			# Cache the arch's path_phase. This is what the phase-based fallback
-			# uses to credit a missed arch when the racer was boost-ejected over
-			# it without triggering the physical Area3D.
 			_arch_phases.append(PathUtils.phase_from_position(arch.global_position))
 			var meshes: Array = []
 			for child_name in ["PillarLeft", "PillarRight", "Crossbar"]:
 				var m: MeshInstance3D = arch.get_node_or_null(child_name) as MeshInstance3D
 				if m:
-					# Make material unique per arch so we can tweak emission per arch
 					var mat: StandardMaterial3D = m.get_active_material(0) as StandardMaterial3D
 					if mat:
 						mat = mat.duplicate() as StandardMaterial3D
@@ -112,9 +117,6 @@ func _ready() -> void:
 	if _results_label:
 		_results_label.visible = false
 
-	# (Rank banners removed — they were ugly. The HUD already shows position per player.)
-
-	# Freeze everyone, hide race-time HUD, show MENU
 	for r in _racers:
 		r.freeze = true
 	if _race_info_label:
@@ -122,14 +124,14 @@ func _ready() -> void:
 	if _countdown_label:
 		_countdown_label.visible = false
 
-	# Wire the new multiplayer menu (MultiplayerMenu.tscn)
 	if multiplayer_menu_path and not multiplayer_menu_path.is_empty():
 		_multiplayer_menu = get_node_or_null(multiplayer_menu_path)
 	if multiplayer_manager_path and not multiplayer_manager_path.is_empty():
 		_multiplayer_manager = get_node_or_null(multiplayer_manager_path)
+	if elimination_manager_path and not elimination_manager_path.is_empty():
+		_elimination_manager = get_node_or_null(elimination_manager_path)
 
 	if _multiplayer_menu:
-		# New menu drives the flow — hide legacy label
 		if _menu_label:
 			_menu_label.visible = false
 		if _multiplayer_menu.has_signal("solo_race_requested"):
@@ -137,7 +139,6 @@ func _ready() -> void:
 		if _multiplayer_menu.has_signal("multiplayer_race_requested"):
 			_multiplayer_menu.multiplayer_race_requested.connect(_on_multiplayer_race_requested)
 	else:
-		# Fallback to legacy text menu
 		if _menu_label:
 			_menu_label.text = "MICROMACHINES V3 CLONE\n\n[1]  1 JOUEUR  (A/D)\n[2]  2 JOUEURS  (A/D + J/L)\n\n[BACKSPACE] reset"
 			_menu_label.visible = true
@@ -145,21 +146,30 @@ func _ready() -> void:
 	if AudioManager:
 		AudioManager.play_music("menu")
 
+	if NetworkClient:
+		NetworkClient.race_state_received.connect(_on_network_race_state)
+
 
 func _on_solo_race_requested(num_players: int) -> void:
 	_is_network_race = false
+	_is_network_host = false
+	_state_runs_locally = true
 	_start_with_mode(num_players)
 
 
-func _on_multiplayer_race_requested(_is_host: bool, _code: String, _peers: Array) -> void:
-	# Network race — keep only P1 as the local human, hide bots,
-	# remote players will appear as ghost cars via MultiplayerManager.
+func _on_multiplayer_race_requested(host: bool, _code: String, _peers: Array) -> void:
 	_is_network_race = true
-	# Strip bots from the lineup — the field is filled by remote ghosts now
-	for bp in bot_paths:
-		var b: Node = get_node_or_null(bp)
-		if b:
-			_remove_racer_from_race(b)
+	_is_network_host = host
+	# Server is authoritative. Host still runs the local sim (for bots etc.)
+	# and broadcasts state. Client only renders.
+	_state_runs_locally = host
+	# Host: keep its own bots, they'll be registered by multiplayer_manager.
+	# Client: drop bots from the local lineup — they're rendered as ghosts.
+	if not host:
+		for bp in bot_paths:
+			var b: Node = get_node_or_null(bp)
+			if b:
+				_remove_racer_from_race(b)
 	_start_with_mode(1)
 
 
@@ -174,12 +184,15 @@ func _register_racer(racer: Node, display_name: String, is_player: bool) -> void
 		"lap_times": [] as Array[float],
 		"finish_time": 0.0,
 		"finished": false,
-		"next_arch_index": 0,  # 0..3, which arch the racer must hit next; lap completes on hitting arch 3
+		"next_arch_index": 0,
 	}
+	if racer is Node:
+		racer.set_meta("race_laps", 0)
+		racer.set_meta("race_next_arch", 0)
+		racer.set_meta("race_finished", false)
 
 
 func _start_countdown() -> void:
-	# F1-style: 3 short low beeps (1 per second) then 1 long high beep + GO
 	_state = State.COUNTDOWN
 	_update_leader_and_camera()
 	for n in range(COUNTDOWN_SECONDS, 0, -1):
@@ -187,12 +200,12 @@ func _start_countdown() -> void:
 			_countdown_label.text = str(n)
 			_countdown_label.visible = true
 		if AudioManager:
-			AudioManager.play("countdown_beep", -6.0, 0.85)  # low beep
+			AudioManager.play("countdown_beep", -6.0, 0.85)
 		await get_tree().create_timer(1.0).timeout
 	if _countdown_label:
 		_countdown_label.text = "GO !"
 	if AudioManager:
-		AudioManager.play("go", 0.0, 1.2)  # softer, slightly higher
+		AudioManager.play("go", 0.0, 1.2)
 		AudioManager.start_engine()
 		AudioManager.play_music("race")
 	await get_tree().create_timer(0.8).timeout
@@ -206,59 +219,99 @@ func _start_race() -> void:
 	_race_start_time = Time.get_ticks_msec() / 1000.0
 	for r in _racers:
 		r.freeze = false
-		# Reset lap-start clock so the first lap timer begins at GO
 		_racer_data[r].last_lap_time = _race_start_time
+	# Wire elimination tracker — applies to both solo (camera-edge fallback) and
+	# MP-host (off-screen → broadcast via NetworkClient). MP-client stays passive
+	# and reacts to elim_event broadcasts received from the server.
+	_wire_elimination_manager()
+
+
+func _wire_elimination_manager() -> void:
+	if _elimination_manager == null:
+		return
+	if not _elimination_manager.has_method("enable_for"):
+		return
+	var lives_per_racer: int = 3
+	if NetworkClient and NetworkClient.is_in_room() and NetworkClient.elimination_mode == "perma":
+		lives_per_racer = 1
+	var entries: Array = []
+	# Local racers (humans + own bots when host)
+	for r in _racers:
+		if not is_instance_valid(r):
+			continue
+		var entry: Dictionary = {"node": r, "is_local": true}
+		if r in _players:
+			entry["id"] = r.player_id if "player_id" in r else (_players.find(r) + 1)
+		else:
+			entry["id"] = r.get_instance_id()
+		entries.append(entry)
+	# Remote ghosts (MP only)
+	if _is_network_race and _multiplayer_manager and _multiplayer_manager.has_method("all_ghosts"):
+		var ghosts: Dictionary = _multiplayer_manager.all_ghosts()
+		for pid in ghosts.keys():
+			var g: Node = ghosts[pid]
+			if g and is_instance_valid(g):
+				entries.append({"node": g, "id": int(pid), "is_local": false})
+	# Local player ids — used by elimination_manager so it knows which trackers
+	# correspond to humans on this device.
+	var local_ids: Array = []
+	for p in _players:
+		if "player_id" in p:
+			local_ids.append(p.player_id)
+	_elimination_manager.enable_for(entries, local_ids, lives_per_racer)
 
 
 func _on_arch_entered(body: Node, arch_idx: int) -> void:
-	# 4 arches in racing order. Racer must pass arch_idx == data.next_arch_index, else ignored.
-	# Hitting arch 3 (last) with next_arch_index==3 completes a lap.
 	if _state != State.RACING:
 		return
+	if not _state_runs_locally:
+		return  # MP-client doesn't run lap logic
 	if not _racer_data.has(body):
 		return
 	var data: Dictionary = _racer_data[body]
 	if data.finished or _eliminated.has(body):
 		return
 	if arch_idx != data.next_arch_index:
-		return  # strict order — physical out-of-order hits are rejected.
-		# Skipped arches are caught up by the phase-based detection in _process
-		# (see _check_phase_passes), which credits them when the racer's actual
-		# path_phase passes the arch's phase. This makes "boosted-over an arch"
-		# legitimate progression while still rejecting cross-track shortcuts.
+		return
 	var last_arch_idx: int = arch_paths.size() - 1
 	if arch_idx == last_arch_idx:
 		var now: float = Time.get_ticks_msec() / 1000.0
 		if now - data.last_lap_time < MIN_LAP_TIME:
-			return  # debounce — would-be sub-MIN_LAP_TIME lap
+			return
 		var lap_duration: float = now - data.last_lap_time
 		data.lap_times.append(lap_duration)
 		data.last_lap_time = now
 		data.laps += 1
 		data.next_arch_index = 0
-		# Lap complete chime — player only
+		_publish_meta(body, data)
 		if data.is_player and AudioManager:
 			AudioManager.play("lap_complete", -4.0, 1.0)
 		if data.laps >= TOTAL_LAPS:
 			data.finished = true
 			data.finish_time = now - _race_start_time
 			_finish_order.append(body)
+			_publish_meta(body, data)
 			if data.is_player and AudioManager:
 				AudioManager.play("win", 0.0, 1.0)
 			_check_race_end()
 	else:
-		data.next_arch_index = arch_idx + 1  # forward skips advance the counter past the missed arches
-		# Arch pass chime — subtle ding
+		data.next_arch_index = arch_idx + 1
+		_publish_meta(body, data)
 		if data.is_player and AudioManager:
 			AudioManager.play("arch_pass", -12.0, 1.3)
 
 
+func _publish_meta(racer: Node, data: Dictionary) -> void:
+	racer.set_meta("race_laps", int(data.laps))
+	racer.set_meta("race_next_arch", int(data.next_arch_index))
+	racer.set_meta("race_finished", bool(data.finished))
+
+
 func _check_race_end() -> void:
-	# Track when the first racer crosses the line — this starts the outro window.
+	if not _state_runs_locally:
+		return
 	if _first_finish_time < 0.0 and _finish_order.size() > 0:
 		_first_finish_time = Time.get_ticks_msec() / 1000.0
-
-	# Done = finished OR eliminated. End immediately if every racer is accounted for.
 	var racers_done: int = 0
 	for r in _racers:
 		if _racer_data[r].finished or _eliminated.has(r):
@@ -266,9 +319,6 @@ func _check_race_end() -> void:
 	if racers_done >= _racers.size():
 		_end_race()
 		return
-
-	# Watchdog: once all human players are out, give bots a fixed window to wrap up.
-	# This prevents the old "race ends instantly when P1 finishes → bots all DNF" bug.
 	var all_players_done: bool = true
 	for p in _players:
 		if not _racer_data[p].finished and not _eliminated.has(p):
@@ -284,11 +334,12 @@ func _end_race() -> void:
 	_state = State.FINISHED
 	for r in _racers:
 		r.freeze = true
+	if _elimination_manager and _elimination_manager.has_method("disable"):
+		_elimination_manager.disable()
 	var unfinished: Array = []
 	for r in _racers:
 		if not _racer_data[r].finished:
 			unfinished.append(r)
-	# Sort: non-eliminated first by progress, eliminated at the bottom
 	unfinished.sort_custom(func(a, b):
 		var a_elim: bool = _eliminated.has(a)
 		var b_elim: bool = _eliminated.has(b)
@@ -319,31 +370,20 @@ func _process(_delta: float) -> void:
 		return
 	_update_leader_and_camera()
 	if _state == State.RACING:
-		_feed_progress_gaps_to_players()
-		_check_eliminations()
+		if _state_runs_locally:
+			_feed_progress_gaps_to_players()
+			_check_eliminations()
+			_check_phase_passes()
+			if _first_finish_time > 0.0:
+				_check_race_end()
 		_update_race_hud()
 		_update_speedometer()
 		_update_arch_highlight()
-		_check_phase_passes()
-		# Tick the post-finish watchdog every frame so the race ends even when no
-		# new arch event fires after the player crosses the line.
-		if _first_finish_time > 0.0:
-			_check_race_end()
 
 
 func _check_phase_passes() -> void:
-	# Per-frame fallback for arch credit. A racer can legitimately miss an
-	# arch's Area3D — boost ejects them off the ground, a wide drift line, an
-	# arch with a too-narrow trigger volume. Each frame, if the racer's actual
-	# position on the figure-8 (_path_phase) has just crossed where their next
-	# arch is supposed to be, we credit it as if they'd hit the trigger.
-	#
-	# This is what stops bots from looping forever after missing one gate, and
-	# is also the reason _on_arch_entered can stay strict (no forward-skip
-	# kludge that turned bots into false leaders and eliminated everyone else).
 	if _arch_phases.is_empty():
 		return
-	# Cap iterations so a runaway frame can't multi-credit and warp progress.
 	var max_passes_per_racer: int = 3
 	for racer in _racers:
 		if not _racer_data.has(racer):
@@ -360,25 +400,16 @@ func _check_phase_passes() -> void:
 				break
 			var arch_phase: float = _arch_phases[next_idx]
 			var racer_phase: float = racer._path_phase
-			# Wraparound-aware "racer is forward of arch" delta in [-0.5, 0.5].
 			var delta: float = wrapf(racer_phase - arch_phase, -0.5, 0.5)
-			# Credit window: racer is past the arch by 0..0.30 of a lap.
-			# 0.30 covers the worst-case boost-ejection over multiple gates.
-			# Less than 0.30 forward = not past yet, ignore.
-			# More than 0.30 = wrapped most of the way around, ignore.
 			if delta <= 0.0 or delta > 0.30:
 				break
 			_on_arch_entered(racer, next_idx)
-			# If next_arch_index didn't advance, _on_arch_entered rejected (e.g.
-			# racing-state guard) — bail to avoid an infinite loop.
 			if data.next_arch_index == next_idx:
 				break
 			passes += 1
 
 
 func _update_arch_highlight() -> void:
-	# Highlight P1's next target arch by boosting its emission energy.
-	# Only updates when the target index changes (cheap).
 	if _players.is_empty() or _arch_meshes.is_empty():
 		return
 	var p1: Node = _players[0]
@@ -390,7 +421,6 @@ func _update_arch_highlight() -> void:
 	var target_idx: int = data.next_arch_index
 	if target_idx == _last_highlighted_idx:
 		return
-	# Apply: target gets HIGHLIGHT_EMISSION, others NORMAL_EMISSION.
 	for i in range(_arch_meshes.size()):
 		var energy: float = HIGHLIGHT_EMISSION if i == target_idx else NORMAL_EMISSION
 		for mat in _arch_meshes[i]:
@@ -404,7 +434,6 @@ func _update_speedometer() -> void:
 		return
 	var s: float = get_player_speed()
 	_speedometer_label.text = "%d m/s" % round(s)
-	# Color-code: white normal, yellow fast, orange boosting
 	if s >= 90.0:
 		_speedometer_label.add_theme_color_override("font_color", Color(1.0, 0.5, 0.1, 1))
 	elif s >= 50.0:
@@ -414,8 +443,6 @@ func _update_speedometer() -> void:
 
 
 func _feed_progress_gaps_to_players() -> void:
-	# Each player learns how far behind the actual race leader they are (in laps).
-	# This drives the player car's catch-up rubber-banding.
 	var leader: Node = _get_race_leader()
 	if leader == null:
 		return
@@ -428,19 +455,13 @@ func _feed_progress_gaps_to_players() -> void:
 			continue
 		var gap: float = leader_progress - _racer_progress(p)
 		if gap < 0.0:
-			gap = 0.0  # player is leader — no boost needed
+			gap = 0.0
 		p.set_race_progress_gap(gap)
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	# _unhandled_input means: any focused Control (e.g. the room-code LineEdit)
-	# consumes its keystrokes FIRST, and we only see what's left over.
-	# This is what prevents BACKSPACE from reloading the scene while the user
-	# is editing a 4-letter join code.
-	# Touch (mobile/web): tap the screen to start solo mode from menu, or restart from results
 	if event is InputEventScreenTouch and event.pressed:
 		if _state == State.MENU:
-			# When the multiplayer menu is up, buttons handle taps directly — don't auto-launch solo
 			var mp_visible: bool = _multiplayer_menu != null and _multiplayer_menu.visible
 			if mp_visible:
 				return
@@ -451,34 +472,29 @@ func _unhandled_input(event: InputEvent) -> void:
 			return
 	if not (event is InputEventKey and event.pressed and not event.echo):
 		return
-	# BACKSPACE restarts at ANY time (returns to menu)
 	if event.keycode == KEY_BACKSPACE:
 		get_tree().reload_current_scene()
 		return
-	# MENU: 1 or 2 to pick player count (legacy fallback when no multiplayer menu visible)
 	if _state == State.MENU:
 		var mp_visible: bool = _multiplayer_menu != null and _multiplayer_menu.visible
 		if mp_visible:
-			return  # multiplayer menu drives the flow via buttons
+			return
 		if event.keycode == KEY_1:
 			_start_with_mode(1)
 		elif event.keycode == KEY_2:
 			_start_with_mode(2)
 		return
-	# ENTER restarts only from results screen
 	if _state == State.FINISHED and (event.keycode == KEY_ENTER or event.keycode == KEY_KP_ENTER):
 		get_tree().reload_current_scene()
 
 
 func _start_with_mode(num_players: int) -> void:
 	_num_players = num_players
-	# Hide menu, show race HUD
 	if _menu_label:
 		_menu_label.visible = false
 	if _race_info_label:
 		_race_info_label.text = "Préparez-vous…"
 		_race_info_label.visible = true
-	# Filter players: keep only the first num_players. Excluded players get hidden + collisionless.
 	var keep_players: Array = []
 	for i in range(_players.size()):
 		if i < num_players:
@@ -486,7 +502,6 @@ func _start_with_mode(num_players: int) -> void:
 		else:
 			_remove_racer_from_race(_players[i])
 	_players = keep_players
-	# Point camera at the active players (midpoint mode for now; switches to leader at GO)
 	if _camera and _camera.has_method("set_targets_to"):
 		_camera.set_targets_to(_players)
 	_state = State.PRE_RACE
@@ -494,7 +509,6 @@ func _start_with_mode(num_players: int) -> void:
 
 
 func _remove_racer_from_race(racer: Node) -> void:
-	# Excludes racer from race tracking and hides them visually + physically
 	_racers.erase(racer)
 	_racer_data.erase(racer)
 	if racer is RigidBody3D:
@@ -508,12 +522,13 @@ func _remove_racer_from_race(racer: Node) -> void:
 
 
 func _update_leader_and_camera() -> void:
-	# Camera prefers the best active PLAYER (so player always sees themselves),
-	# falls back to the leading bot if no player is active.
+	# In MP-client mode, leader_id comes from the server's race_state.
+	if not _state_runs_locally and _is_network_race:
+		_apply_network_leader_to_camera()
+		return
 	var camera_target: Node = _pick_camera_target()
 	if camera_target == null:
 		return
-	# Hysteresis: don't switch camera target unless the new one is meaningfully ahead
 	if camera_target != _current_leader and _current_leader != null and _racer_data.has(_current_leader):
 		var still_active: bool = not _eliminated.has(_current_leader) and not _racer_data[_current_leader].finished
 		if still_active:
@@ -527,8 +542,35 @@ func _update_leader_and_camera() -> void:
 			_camera.set_leader_target(camera_target)
 
 
+func _apply_network_leader_to_camera() -> void:
+	# B1 — shared leader-cam from server's authoritative leader_id.
+	if _last_race_state.is_empty():
+		return
+	var leader_id_v = _last_race_state.get("leader_id", null)
+	if leader_id_v == null:
+		return
+	var leader_id: int = int(leader_id_v)
+	var node: Node = _resolve_network_node(leader_id)
+	if node == null or node == _current_leader:
+		return
+	_current_leader = node
+	if _camera and _camera.has_method("set_leader_target"):
+		_camera.set_leader_target(node)
+
+
+func _resolve_network_node(player_id: int) -> Node:
+	# Local human → P1
+	if NetworkClient and player_id == NetworkClient.my_player_id:
+		if _players.size() > 0:
+			return _players[0]
+	if _multiplayer_manager and _multiplayer_manager.has_method("get_ghost"):
+		var g: Node = _multiplayer_manager.get_ghost(player_id)
+		if g != null and is_instance_valid(g):
+			return g
+	return null
+
+
 func _pick_camera_target() -> Node:
-	# Best active human player wins
 	var best_player: Node = null
 	var best_player_prog: float = -INF
 	for p in _players:
@@ -542,7 +584,6 @@ func _pick_camera_target() -> Node:
 			best_player = p
 	if best_player != null:
 		return best_player
-	# No active player → fallback to actual race leader (likely a bot)
 	var rankings: Array = _compute_rankings()
 	for r in rankings:
 		if not _eliminated.has(r) and not _racer_data[r].finished:
@@ -551,7 +592,6 @@ func _pick_camera_target() -> Node:
 
 
 func _get_race_leader() -> Node:
-	# Highest-progress active racer (regardless of player/bot) — used for elimination distance
 	var rankings: Array = _compute_rankings()
 	for r in rankings:
 		if not _eliminated.has(r) and not _racer_data[r].finished:
@@ -560,7 +600,8 @@ func _get_race_leader() -> Node:
 
 
 func _check_eliminations() -> void:
-	# Eliminations are relative to the ACTUAL race leader, not the camera target
+	# The elimination_manager handles MP off-screen elim. Solo + MP-host still
+	# get this distance-based fallback for completely runaway cars.
 	var race_leader: Node = _get_race_leader()
 	if race_leader == null:
 		return
@@ -585,7 +626,6 @@ func _eliminate(racer: Node) -> void:
 		racer.freeze = true
 		racer.linear_velocity = Vector3.ZERO
 		racer.angular_velocity = Vector3.ZERO
-	# Hide entirely + disable collision so the carcass doesn't litter the track as an invisible obstacle
 	racer.visible = false
 	for child in racer.get_children():
 		if child is CollisionShape3D:
@@ -596,14 +636,16 @@ func _eliminate(racer: Node) -> void:
 func _update_race_hud() -> void:
 	if _race_info_label == null or _players.is_empty():
 		return
+	# In MP-client mode, ranking comes from server. Render that.
+	if not _state_runs_locally and _is_network_race and not _last_race_state.is_empty():
+		_render_network_hud()
+		return
 	var rankings: Array = _compute_rankings()
 	var lines: Array[String] = []
-	# Show the actual race leader at the top (not the camera target)
 	var race_leader: Node = _get_race_leader()
 	if race_leader and _racer_data.has(race_leader):
 		var ld: Dictionary = _racer_data[race_leader]
 		lines.append("LEADER : %s — Tour %d/%d" % [ld.name, min(ld.laps + 1, TOTAL_LAPS), TOTAL_LAPS])
-	# Show each player's status
 	for i in range(_players.size()):
 		var p: Node = _players[i]
 		if not _racer_data.has(p):
@@ -630,11 +672,53 @@ func _update_race_hud() -> void:
 					best = lt
 			best_lap_str = "  best %.1fs" % best
 		lines.append("P%d  Tour %d/%d  %s/%d  ⏱ %.1fs%s" % [i + 1, min(d.laps + 1, TOTAL_LAPS), TOTAL_LAPS, _place_label(pos), _racers.size(), current_lap_time, best_lap_str])
-		# Player guidance: next arch to hit
 		var next_idx: int = d.next_arch_index
 		if next_idx >= 0 and next_idx < ARCH_COLOR_NAMES.size():
 			lines.append("       → Prochaine arche : %s" % ARCH_COLOR_NAMES[next_idx])
 	_race_info_label.text = "\n".join(lines)
+
+
+func _render_network_hud() -> void:
+	var rankings: Array = _last_race_state.get("rankings", [])
+	var lines: Array[String] = []
+	var leader_id_v = _last_race_state.get("leader_id", null)
+	if leader_id_v != null and not rankings.is_empty():
+		var leader_entry: Dictionary = rankings[0]
+		var leader_label: String = _label_for_id(int(leader_id_v))
+		lines.append("LEADER : %s — Tour %d/%d" % [leader_label, min(int(leader_entry.get("laps", 0)) + 1, TOTAL_LAPS), TOTAL_LAPS])
+	# Local player line
+	var my_id: int = -1
+	if NetworkClient:
+		my_id = NetworkClient.my_player_id
+	for entry in rankings:
+		if int(entry.get("id", -1)) == my_id:
+			var lap_v: int = int(entry.get("laps", 0))
+			var na: int = int(entry.get("next_arch", 0))
+			var pos_idx: int = rankings.find(entry) + 1
+			lines.append("P1  Tour %d/%d  %s/%d  (réseau)" % [min(lap_v + 1, TOTAL_LAPS), TOTAL_LAPS, _place_label(pos_idx), rankings.size()])
+			if na >= 0 and na < ARCH_COLOR_NAMES.size():
+				lines.append("       → Prochaine arche : %s" % ARCH_COLOR_NAMES[na])
+			break
+	# Lives display when applicable
+	var elim_mode: String = str(_last_race_state.get("elimination_mode", "lives3"))
+	if elim_mode == "lives3":
+		var lives: Dictionary = _last_race_state.get("lives", {})
+		if lives.has(str(my_id)):
+			var n: int = int(lives[str(my_id)])
+			lines.append("       Vies : %s" % ("✦".repeat(max(0, n)) if n > 0 else "—"))
+	_race_info_label.text = "\n".join(lines)
+
+
+func _label_for_id(player_id: int) -> String:
+	if player_id < 0:
+		return "BOT %d" % (-player_id)
+	if NetworkClient and player_id == NetworkClient.my_player_id:
+		return "TOI"
+	return "P%d" % player_id
+
+
+func _on_network_race_state(state: Dictionary) -> void:
+	_last_race_state = state
 
 
 func _place_label(n: int) -> String:
@@ -650,27 +734,38 @@ func _compute_rankings() -> Array:
 
 
 func _racer_progress(racer: Node) -> float:
-	# Progress = laps + segment + phase_fine_tiebreaker.
-	# Each arch = 1/N of the lap (N = arch count). Cheaters can't gain laps without passing all N in order.
 	var data: Dictionary = _racer_data[racer]
 	var laps: float = float(data.laps)
 	var arch_count: float = max(1.0, float(arch_paths.size()))
 	var seg: float = float(data.next_arch_index) / arch_count
-	# Tiny fine-grained tiebreaker: position along the racing line within the segment
 	var fine: float = 0.0
 	if "_path_phase" in racer:
-		fine = racer._path_phase * 0.001  # << seg weight, used purely for tie-breaking
+		fine = racer._path_phase * 0.001
 	return laps + seg + fine
 
 
-# Phase-from-position helper (still useful for HUD widgets)
 func _racer_phase(racer: Node) -> float:
 	if "_path_phase" in racer:
 		return racer._path_phase
 	return PathUtils.phase_from_position(racer.global_position)
 
 
-# Public API for HUD widgets (minimap)
+# Public API for elimination_manager — gives the leader's path_phase so it can
+# respawn carcasses behind the pack.
+func get_leader_phase() -> float:
+	var leader: Node = _get_race_leader()
+	if leader != null:
+		return _racer_phase(leader)
+	return 0.0
+
+
+func get_leader_speed() -> float:
+	var leader: Node = _get_race_leader()
+	if leader is RigidBody3D:
+		return (leader as RigidBody3D).linear_velocity.length()
+	return 18.0
+
+
 func get_minimap_dots() -> Array:
 	var dots: Array = []
 	for r in _racers:
@@ -689,7 +784,6 @@ func get_minimap_dots() -> Array:
 	return dots
 
 
-# Public API for HUD widgets (speedometer) — returns P1's forward speed in m/s
 func get_player_speed() -> float:
 	if _players.is_empty():
 		return 0.0
