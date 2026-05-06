@@ -2,6 +2,62 @@
 
 Hard-won knowledge. Add new entries on top.
 
+## 2026-05-06 — `Node3D` n'a PAS de propriété `modulate`
+
+**What happened:** Phase 3 implementation, `ghost_car.gd` héritait de `CharacterBody3D` (donc Node3D). J'ai écrit `modulate = Color(0.5, 0.5, 0.5, 0.5)` pour le mode spectateur. Godot crashed au parse: `Identifier "modulate" not declared in the current scope`.
+
+**Root cause:** `modulate` est une propriété de `CanvasItem` (Control / Node2D). Les nœuds 3D héritent de `Node3D`, pas de `CanvasItem`, donc pas de modulate.
+
+**Rule:** Pour grey-out / dimmer / teinter un Node3D, modifier les **materials** des `MeshInstance3D` enfants directement (`set_surface_override_material(i, mat)` avec `albedo_color` et `emission_energy_multiplier` ajustés). Pas `modulate`.
+
+**How to apply:** Dès qu'un effet visuel "darken" ou "alpha" est requis sur du 3D, écrire un helper `_apply_X_tint(node, on)` qui descend récursivement le node tree et patche les materials. C'est exactement le pattern de `ghost_car._apply_spectator_tint()`.
+
+---
+
+## 2026-05-06 — Ne JAMAIS escalader `collision_layer` sans vérifier les `Area3D` mask
+
+**What happened:** Phase 3 voulait collisions physiques entre cars au figure-8 crossing. J'ai mis `collision_layer = 2` et `mask = 1 | 2` sur `car.gd`, `bot_car.gd` et `ghost_car.gd`. Smoke test passé (Godot parse 0 erreurs). Web build deployé. Seb playtest: « Solo : booster marche plus ». Le `BoostPad` (Area3D) avait son `collision_mask` par défaut à layer 1 — il ne voyait plus les cars passées sur layer 2.
+
+**Root cause:** Les `Area3D` ont leur propre `collision_mask` qui définit quelles **layers** ils monitorent. Changer la `collision_layer` d'une car la fait disparaître pour toute Area3D qui ne mask que la layer d'origine. Le passage en `CharacterBody3D` pour `ghost_car` (vs Node3D) suffisait pour le crossing collision — pas besoin d'escalader la layer.
+
+**Rule:** **Ne JAMAIS changer `collision_layer` par défaut (1) sans auditer toutes les `Area3D` du projet** (BoostPad, FinishLine, checkpoints, pickups). Si on doit séparer des couches (ex. cars = layer 2), il FAUT mettre à jour les masks de chaque Area3D qui doit continuer à les voir.
+
+**How to apply:** Avant de toucher à `collision_layer` ou `collision_mask`, faire `grep -rn "extends Area3D"` pour lister toutes les Area3D du projet, et vérifier chaque mask. Sinon: garder layer 1 partout (RigidBody3D / CharacterBody3D collisionnent quand même entre eux sur la même layer).
+
+---
+
+## 2026-05-06 — `_check_eliminations()` distance-based ≠ MMV3 feel
+
+**What happened:** Le V0.6 avait ajouté `ELIMINATION_DIST_FROM_LEADER = 120m` dans `race_manager._check_eliminations()` pour virer les stragglers. Phase 3 a ajouté `elimination_manager.gd` (MP off-screen elim). Seb playtest solo: « à la fin de la course il reste plus que moi et le premier. Tous les autres sont out. Il faudrait essayer de garder le peloton, c'est plus marrant ». La distance 120m est trop courte pour un figure-8 de 200m+ avec rubber-banding agressif.
+
+**Root cause:** L'élimination par distance est un héritage TrackMania, pas MMV3. MMV3 garde le peloton serré via la leader-cam partagée + élim off-screen *seulement quand un joueur tombe vraiment hors-écran*. La règle 120m flat éliminait des bots qui faisaient simplement un tour de retard normal.
+
+**Rule:** En **solo**, le peloton doit rester intact toute la course. Le `POST_FIRST_FINISH_TIMEOUT 18s` cut quand même quand le 1er a fini. Pas besoin d'élimination distance solo. En **MP**, l'élimination off-screen est opt-in via le toggle lobby (3 vies / perma).
+
+**How to apply:** Quand Seb dit "plus marrant" / "garder X", c'est une feature design lock — ne pas supprimer ou ré-introduire X dans une refonte future sans sa validation explicite. Le solo feel a été lockée 2026-05-04 (« garde ces réglages pour le moment »).
+
+---
+
+## 2026-05-06 — Smoke test du protocole ≠ playtest réel
+
+**What happened:** Phase 3 multi shippé en v0.19.0-rc1. WSS smoke test Python avec uv websockets PASSED (create / join / set_options / register_bot / start / state forward / race_state @ 5Hz / elim_event). Godot parse: 0 erreurs. Web build HTTP 200 sur mv3.naskaus.com. Rapport FR + Telegram envoyés. Seb playtest: « MULTI tous les problèmes soulevés sont toujours présents. Pas de bots, pas de cam commune, pas d'élimination. Boosters marchent en desktop pas mobile ». 4 régressions critiques côté gameplay malgré tous les tests verts.
+
+**Root cause:** Le smoke test WSS validait le **protocole serveur** (messages bien échangés), pas le **gameplay client** (visuels, états, collisions, contrôles). Les bugs étaient :
+1. `_state_runs_locally = host` → le host gardait sa cam locale au lieu du leader-cam partagé
+2. Bots non rendus côté peer (probable timing du race_start_signal)
+3. `collision_layer = 2` cassait BoostPad
+
+Aucun de ces 3 ne se voit en smoke test serveur. Seul le playtest réel (Mac + phone, 2 instances Godot) les révèle.
+
+**Rule:** **Pour toute feature qui touche au rendu/contrôles/physique, le smoke test du protocole + parse Godot ne suffisent jamais.** Il faut soit (a) lancer 2 instances Godot localement et tester en split-screen, soit (b) être explicite avec Seb : *« code shippé, smoke OK, mais playtest réel = ton job »* et NE PAS dire « tout shippé avec succès » dans le rapport.
+
+**How to apply:** Avant de générer le rapport final d'une session multiplayer/UI/physique :
+1. Si Godot 2-instance test possible localement → faire le test
+2. Sinon → le rapport doit dire explicitement *« smoke test ≠ gameplay test »* et lister précisément ce qui n'a PAS été vérifié
+3. Ne jamais marquer "SHIPPED" sans avoir vu la feature fonctionner soit chez moi, soit confirmation Seb
+
+---
+
 ## 2026-05-03 — Decor scale and visibility
 
 **What happened:** Initial decor batch placed `barrierWhite`, `bannerTowerRed/Green`, `grandStandRound` at racing-line scale. Seb: "c'est vraiment 10 a 20x trop petit" — invisible from camera height (22m) on a 200×200m track.
