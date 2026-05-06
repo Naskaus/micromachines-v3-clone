@@ -522,8 +522,10 @@ func _remove_racer_from_race(racer: Node) -> void:
 
 
 func _update_leader_and_camera() -> void:
-	# In MP-client mode, leader_id comes from the server's race_state.
-	if not _state_runs_locally and _is_network_race:
+	# v0.19.1: shared leader-cam in BOTH host and client during MP. The host
+	# previously kept following its own car (because _state_runs_locally=true)
+	# which broke the B1 spec — both ends of the room must see the same view.
+	if _is_network_race:
 		_apply_network_leader_to_camera()
 		return
 	var camera_target: Node = _pick_camera_target()
@@ -544,15 +546,25 @@ func _update_leader_and_camera() -> void:
 
 func _apply_network_leader_to_camera() -> void:
 	# B1 — shared leader-cam from server's authoritative leader_id.
+	# Until the first race_state arrives, fall back to the local player so the
+	# host doesn't sit on a stale Camera3D during the countdown.
 	if _last_race_state.is_empty():
+		if _current_leader == null and _players.size() > 0:
+			_current_leader = _players[0]
+			if _camera and _camera.has_method("set_leader_target"):
+				_camera.set_leader_target(_players[0])
 		return
 	var leader_id_v = _last_race_state.get("leader_id", null)
 	if leader_id_v == null:
 		return
 	var leader_id: int = int(leader_id_v)
 	var node: Node = _resolve_network_node(leader_id)
-	if node == null or node == _current_leader:
+	if node == null:
+		print("[RaceManager] leader %d unresolved (no local node, no ghost yet)" % leader_id)
 		return
+	if node == _current_leader:
+		return
+	print("[RaceManager] leader-cam → %s (id=%d)" % [node.name, leader_id])
 	_current_leader = node
 	if _camera and _camera.has_method("set_leader_target"):
 		_camera.set_leader_target(node)

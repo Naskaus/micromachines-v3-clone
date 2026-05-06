@@ -88,11 +88,14 @@ func _process(_delta: float) -> void:
 		return
 	if _camera == null or not _camera.has_method("is_on_screen"):
 		return
-	# Only the authoritative side runs the detection.
-	var i_am_authority: bool = true
-	if NetworkClient and NetworkClient.is_in_room():
-		i_am_authority = NetworkClient.is_host
-	if not i_am_authority:
+	# v0.19.1: off-screen elimination is a MULTIPLAYER feature only. Running
+	# it in solo eliminated whoever was 3rd-just-behind-the-leader after 1.5s,
+	# which is exactly the canonical "P2/P3 racing tight" situation. The solo
+	# race already has a 120m distance fallback in race_manager._check_eliminations.
+	if NetworkClient == null or not NetworkClient.is_in_room():
+		return
+	# Only the authoritative side (host) runs the detection in MP.
+	if not NetworkClient.is_host:
 		return
 	for tracker_id in _trackers.keys():
 		var t: Dictionary = _trackers[tracker_id]

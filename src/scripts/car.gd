@@ -314,10 +314,12 @@ func _ready() -> void:
 	axis_lock_angular_z = true
 	linear_damp = 0.5
 	angular_damp = 4.0
-	# v0.19.0: cars on layer 2 collide with world (1) + other cars (2),
-	# matching ghost_car.gd so MP cars actually bump and push.
-	collision_layer = 2
-	collision_mask = 1 | 2
+	# v0.19.1: revert to default layer/mask (1/1) — boost pads' Area3D monitors
+	# layer 1 by default, so changing cars to layer 2 silently broke boost
+	# detection in BOTH solo and MP. Default RigidBody3D on layer 1 already
+	# collides with other RigidBody3Ds on layer 1, so no need to escalate.
+	collision_layer = 1
+	collision_mask = 1
 	# Derive phase from spawn position (initial_path_phase is just a fallback)
 	_path_phase = PathUtils.phase_from_position(global_position)
 	if hud_label_path and not hud_label_path.is_empty():

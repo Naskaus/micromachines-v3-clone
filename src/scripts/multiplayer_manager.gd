@@ -63,11 +63,16 @@ func _on_race_start() -> void:
 
 
 func _register_bots() -> void:
+	print("[MultiplayerManager] registering %d bots with server (host)" % _bots.size())
 	for i in range(_bots.size()):
 		var b: Node = _bots[i]
+		if not is_instance_valid(b):
+			print("  bot %d invalid, skipping" % _bot_ids[i])
+			continue
 		var color: Color = Color(0.6, 0.6, 0.6)
 		if "bot_color" in b:
 			color = b.bot_color
+		print("  → register bot id=%d name=%s color=%s" % [_bot_ids[i], b.name, str(color)])
 		NetworkClient.register_bot(_bot_ids[i], color)
 
 
@@ -140,6 +145,7 @@ func _on_peer_state(player_id: int, msg: Dictionary) -> void:
 		return  # don't ghost ourselves
 	var ghost: Node = _ghosts.get(player_id, null)
 	if ghost == null:
+		print("[MultiplayerManager] spawn ghost for pid=%d (was missing)" % player_id)
 		ghost = _spawn_ghost(player_id)
 	if ghost == null:
 		return

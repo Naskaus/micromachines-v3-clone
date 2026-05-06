@@ -229,6 +229,11 @@ func _handle_message(text: String) -> void:
 		"start":
 			emit_signal("race_start_signal")
 		"race_state":
+			# Lightweight 5Hz log — too noisy at full but priceless when the
+			# leader-cam doesn't switch and we need to know if the server
+			# actually ships the message.
+			if int(msg.get("leader_id", -1)) >= 0 and randf() < 0.1:
+				print("[NetworkClient] race_state leader=%s ranks=%d elim=%s" % [str(msg.get("leader_id")), int(msg.get("rankings", []).size()), str(msg.get("elimination_mode"))])
 			emit_signal("race_state_received", msg)
 		"options_changed":
 			elimination_mode = str(msg.get("elimination_mode", elimination_mode))

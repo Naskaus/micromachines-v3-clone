@@ -48,9 +48,12 @@ func setup(pid: int, idx: int) -> void:
 
 
 func _ready() -> void:
-	# Physics — cars on layer 2, collide with world (1) + other cars (2)
-	collision_layer = 2
-	collision_mask = 1 | 2
+	# v0.19.1: stay on default layer 1 / mask 1 so we collide with the world
+	# and other cars without breaking BoostPad/Area3D detection. The whole
+	# point of CharacterBody3D vs the old Node3D is that we now have a body
+	# at all — the layer doesn't need to be escalated for that.
+	collision_layer = 1
+	collision_mask = 1
 	# Box shape sized to the car (matches Car.tscn convention)
 	var col: CollisionShape3D = CollisionShape3D.new()
 	var box: BoxShape3D = BoxShape3D.new()
