@@ -372,7 +372,12 @@ func _process(_delta: float) -> void:
 	if _state == State.RACING:
 		if _state_runs_locally:
 			_feed_progress_gaps_to_players()
-			_check_eliminations()
+			# v0.19.2: distance-based elimination removed. Seb wants the peloton
+			# kept all race long ("c'est plus marrant"). Bot rubber-banding keeps
+			# stragglers in range anyway, and POST_FIRST_FINISH_TIMEOUT (18s)
+			# still cuts the race off after the first finisher so AFK bots
+			# can't stall the end. MP off-screen elim is opt-in via the lobby
+			# toggle and runs only when in a network room.
 			_check_phase_passes()
 			if _first_finish_time > 0.0:
 				_check_race_end()
