@@ -1,68 +1,50 @@
 extends RigidBody3D
 
-const PathUtils = preload("res://scripts/path_utils.gd")
-
-# Micromachines V3 clone — Car controller
+# Player car (V0.20 — arch-based, path-free).
 # Auto-acceleration + 2-button steering. Drift via low lateral friction.
-#
-# ╔═══════════════════════════════════════════════════════════════════╗
-# ║  BASELINE V0.1 — LOCKED 2026-05-02 — confirmed by Seb "trop bien" ║
-# ║  Pre-req: Car.tscn must use PhysicsMaterial(friction=0)           ║
-# ║  If you change anything below, BUMP THE VERSION + DATE.           ║
-# ╚═══════════════════════════════════════════════════════════════════╝
 
-@export var player_id: int = 1  # 1..4 — maps to InputMap actions p<N>_left / p<N>_right
+@export var player_id: int = 1
 @export var hud_label_path: NodePath
 @export var spawn_pos: Vector3 = Vector3(0.0, 0.5, 80.0)
-@export var spawn_yaw_deg: float = -90.0  # rotation around Y at spawn
-@export var car_color: Color = Color(0.9, 0.2, 0.2, 1.0)  # body color (used by primitive build only)
-@export var car_model_path: String = ""  # if set, loads a .glb from this path instead of building primitives
-@export var car_model_scale: float = 1.0  # uniform scale to fit the 1×0.5×2 collision
-@export var car_model_y_offset: float = -0.25  # Kenney models have origin at bottom — drop to chassis bottom
-@export var respawn_keycode: int = KEY_R  # which key respawns this car
-@export var reverse_keycode: int = KEY_S  # held to reverse out of a stuck spot
-@export var camera_path: NodePath = NodePath("../Camera3D")  # for shake feedback
-@export var initial_path_phase: float = 0.25  # where on the figure-8 this car starts (0.25 = top of top oval)
+@export var spawn_yaw_deg: float = -90.0
+@export var car_color: Color = Color(0.9, 0.2, 0.2, 1.0)
+@export var car_model_path: String = ""
+@export var car_model_scale: float = 1.0
+@export var car_model_y_offset: float = -0.25
+@export var respawn_keycode: int = KEY_R
+@export var reverse_keycode: int = KEY_S
+@export var camera_path: NodePath = NodePath("../Camera3D")
 
 # --- Tuning constants (BASELINE V0.3 — slow ramp + steer drag + better drift) ---
-# v0.18.0: -20% top speed for a slightly more forgiving feel (Seb).
-const TOP_SPEED := 33.6          # m/s — cruise speed (was 42.0)
-const ACCEL := 16.0              # m/s² — slow ramp scaled with TOP_SPEED (was 20.0)
-const TURN_RATE := 3.4           # rad/s — yaw rate at full speed
-const TURN_RATE_LOW_SPEED := 2.0 # rad/s — yaw rate when nearly stopped (less twitchy)
-const TURN_RATE_DRIFT_BONUS := 1.20  # +20% yaw rate when drifting (car pivots more visibly)
-const LATERAL_GRIP := 8.0        # how hard we kill sideways velocity (higher = less slide)
-const DRIFT_GRIP := 1.8          # lateral grip when drifting — lower = longer slide (was 3.0)
-const HARD_TURN_SPEED_FACTOR := 0.55 # speed > 55% top to "drift" — easier to trigger (was 0.7)
-const STEER_TOP_LOSS := 0.15     # at full steer, effective top is reduced by this fraction (15%)
+const TOP_SPEED := 33.6
+const ACCEL := 16.0
+const TURN_RATE := 3.4
+const TURN_RATE_LOW_SPEED := 2.0
+const TURN_RATE_DRIFT_BONUS := 1.20
+const LATERAL_GRIP := 8.0
+const DRIFT_GRIP := 1.8
+const HARD_TURN_SPEED_FACTOR := 0.55
+const STEER_TOP_LOSS := 0.15
 
-# --- Player catch-up rubber-banding (aggressive — make last-place comeback feel real) ---
-const PLAYER_RUBBER_MAX := 0.80  # +80% top speed boost at max gap
-const PLAYER_RUBBER_DEAD_ZONE := 0.02
-const PLAYER_RUBBER_FULL_GAP := 0.10   # 10% lap behind = max boost — kicks in REALLY fast (was 0.15)
+# --- Player catch-up rubber-banding (aggressive comeback) ---
+const PLAYER_RUBBER_MAX := 0.80
+const PLAYER_RUBBER_DEAD_ZONE := 0.5
+const PLAYER_RUBBER_FULL_GAP := 3.0  # 3+ arches behind leader = max boost
 
-# --- Off-track speed malus (track is centerline ± TRACK_HALF_WIDTH) ---
-const TRACK_HALF_WIDTH := 6.0
-const OFF_TRACK_MALUS := 0.5  # 50% top speed when off the painted track
-
-# --- Test toggle (T cycles slow/normal/fast, R respawns) ---
+# --- Test toggle ---
 const SPEED_MODES := ["SLOW", "NORMAL", "FAST"]
 const SPEED_FACTORS := [0.5, 1.0, 1.5]
 var _speed_mode := 1
 var _current_top_speed := TOP_SPEED
 
-# --- Boost (set by boost pads) ---
 var _boost_until: float = 0.0
 var _boost_factor: float = 1.0
 
-# --- Reverse gear ---
-const REVERSE_TOP_SPEED := -10.0  # m/s — capped slow reverse for unsticking
-const REVERSE_FORCE_FACTOR := 0.7  # multiplier on ACCEL when reversing
+const REVERSE_TOP_SPEED := -10.0
+const REVERSE_FORCE_FACTOR := 0.7
 
-# --- Race progress (fed from race_manager for catch-up rubber-banding) ---
-var _progress_gap_to_leader: float = 0.0  # >0 means I'm behind leader; updated each frame
-var _path_phase: float = 0.0  # current parametric position on the figure-8 path
-var _was_drifting: bool = false  # for skid SFX edge detection
+var _progress_gap_to_leader: float = 0.0  # in arch-units now (was lap fraction)
+var _was_drifting: bool = false
 
 
 func set_race_progress_gap(gap: float) -> void:
@@ -80,33 +62,11 @@ func _catch_up_factor() -> float:
 	return 1.0 + t * PLAYER_RUBBER_MAX
 
 
-func _off_track_factor() -> float:
-	# Distance to closest of the two figure-8 ovals
-	var p: Vector3 = global_position
-	var d_top: float = _dist_to_ellipse_center(p, -PathUtils.OVAL_H)
-	var d_bot: float = _dist_to_ellipse_center(p, PathUtils.OVAL_H)
-	if min(d_top, d_bot) > TRACK_HALF_WIDTH:
-		return OFF_TRACK_MALUS
-	return 1.0
-
-
-func _dist_to_ellipse_center(pos: Vector3, cz: float) -> float:
-	var fx: float = pos.x
-	var fz: float = pos.z - cz
-	var a2: float = PathUtils.OVAL_A * PathUtils.OVAL_A
-	var b2: float = PathUtils.OVAL_B * PathUtils.OVAL_B
-	var f: float = (fx * fx) / a2 + (fz * fz) / b2 - 1.0
-	var gx: float = 2.0 * fx / a2
-	var gz: float = 2.0 * fz / b2
-	var gmag: float = sqrt(gx * gx + gz * gz)
-	return abs(f) / max(gmag, 0.0001)
-
 var _left_action: String
 var _right_action: String
 var _hud_label: Label
-var _camera: Node = null  # set in _ready, used to trigger shake on impact / boost
+var _camera: Node = null
 
-# --- Particle FX (built programmatically in _ready) ---
 var _smoke_left: CPUParticles3D
 var _smoke_right: CPUParticles3D
 var _boost_trail: CPUParticles3D
@@ -119,7 +79,6 @@ func _build_car_visual_from_glb() -> bool:
 	if packed == null:
 		push_warning("[car.gd] Could not load model at: " + car_model_path)
 		return false
-	# Hide placeholder
 	var existing: Node = get_node_or_null("MeshInstance3D")
 	if existing and existing is MeshInstance3D:
 		existing.visible = false
@@ -130,10 +89,7 @@ func _build_car_visual_from_glb() -> bool:
 		var n3d: Node3D = inst as Node3D
 		n3d.position = Vector3(0, car_model_y_offset, 0)
 		n3d.scale = Vector3(car_model_scale, car_model_scale, car_model_scale)
-		# Kenney models face +Z by default; flip 180° so forward matches our -Z convention
 		n3d.rotation_degrees = Vector3(0, 180, 0)
-	# Godot loses the GLB's external texture reference on import — re-attach Kenney's colormap atlas
-	# Each mesh's UVs already point to the correct color block in the atlas
 	var colormap: Texture2D = load("res://assets/cars/Textures/colormap.png") as Texture2D
 	if colormap:
 		_apply_colormap_to_meshes(inst, colormap)
@@ -155,11 +111,9 @@ func _apply_colormap_to_meshes(node: Node, tex: Texture2D) -> void:
 
 
 func _build_car_visual(body_color: Color) -> void:
-	# Hide the placeholder single-box mesh
 	var existing: Node = get_node_or_null("MeshInstance3D")
 	if existing and existing is MeshInstance3D:
 		existing.visible = false
-	# 1. Chassis (main lower body)
 	var chassis: MeshInstance3D = MeshInstance3D.new()
 	var cm: BoxMesh = BoxMesh.new()
 	cm.size = Vector3(0.95, 0.30, 1.95)
@@ -171,7 +125,6 @@ func _build_car_visual(body_color: Color) -> void:
 	chassis_mat.metallic = 0.2
 	chassis.set_surface_override_material(0, chassis_mat)
 	add_child(chassis)
-	# 2. Cabin (darker shade, sits on top, slightly forward)
 	var cabin: MeshInstance3D = MeshInstance3D.new()
 	var cabin_m: BoxMesh = BoxMesh.new()
 	cabin_m.size = Vector3(0.75, 0.32, 0.95)
@@ -182,7 +135,6 @@ func _build_car_visual(body_color: Color) -> void:
 	cabin_mat.roughness = 0.3
 	cabin.set_surface_override_material(0, cabin_mat)
 	add_child(cabin)
-	# 3. 4 wheels — cylinders rotated so axis is along car X
 	var wheel_positions: Array[Vector3] = [
 		Vector3(-0.48, -0.18, 0.62),
 		Vector3(0.48, -0.18, 0.62),
@@ -214,7 +166,7 @@ func _make_smoke_emitter(local_offset: Vector3) -> CPUParticles3D:
 	p.emitting = false
 	p.local_coords = false
 	p.spread = 35.0
-	p.direction = Vector3(0, 0.4, 1)  # updated per frame to match car backward
+	p.direction = Vector3(0, 0.4, 1)
 	p.initial_velocity_min = 1.5
 	p.initial_velocity_max = 3.5
 	p.gravity = Vector3(0, 0.6, 0)
@@ -238,28 +190,27 @@ func _make_smoke_emitter(local_offset: Vector3) -> CPUParticles3D:
 func _make_boost_emitter(local_offset: Vector3) -> CPUParticles3D:
 	var p: CPUParticles3D = CPUParticles3D.new()
 	p.position = local_offset
-	p.amount = 80              # 30 → 80 (much denser)
-	p.lifetime = 0.45          # 0.30 → 0.45 (longer trail)
+	p.amount = 80
+	p.lifetime = 0.45
 	p.emitting = false
 	p.local_coords = false
-	p.spread = 38.0            # 20 → 38° (wider cone of fire)
+	p.spread = 38.0
 	p.direction = Vector3(0, 0.15, 1)
-	p.initial_velocity_min = 7.0   # 4 → 7
-	p.initial_velocity_max = 12.0  # 6.5 → 12 (fast streaks)
+	p.initial_velocity_min = 7.0
+	p.initial_velocity_max = 12.0
 	p.gravity = Vector3.ZERO
-	p.scale_amount_min = 0.6   # 0.3 → 0.6 (bigger)
-	p.scale_amount_max = 1.5   # 0.6 → 1.5 (much bigger)
+	p.scale_amount_min = 0.6
+	p.scale_amount_max = 1.5
 	p.color = Color(1.0, 0.45, 0.05, 0.95)
 	var mesh: SphereMesh = SphereMesh.new()
-	mesh.radius = 0.35         # 0.22 → 0.35
-	mesh.height = 0.7          # 0.44 → 0.7
+	mesh.radius = 0.35
+	mesh.height = 0.7
 	mesh.radial_segments = 6
 	mesh.rings = 3
 	var mat: StandardMaterial3D = StandardMaterial3D.new()
 	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	mat.albedo_color = Color(1.0, 0.45, 0.05, 0.95)
-	# Glow for "fire" effect — particles emit light against the dark felt
 	mat.emission_enabled = true
 	mat.emission = Color(1.0, 0.55, 0.15, 1.0)
 	mat.emission_energy_multiplier = 2.5
@@ -271,29 +222,24 @@ func _make_boost_emitter(local_offset: Vector3) -> CPUParticles3D:
 func apply_boost(duration: float, factor: float) -> void:
 	_boost_until = Time.get_ticks_msec() / 1000.0 + duration
 	_boost_factor = factor
-	# Snap forward velocity to target instantly — boost should feel VIOLENT
-	# Lateral velocity preserved so drift continues
 	var fwd: Vector3 = -transform.basis.z
 	var fwd_speed: float = linear_velocity.dot(fwd)
 	var target: float = _current_top_speed * factor
 	if fwd_speed < target:
 		var lateral: Vector3 = linear_velocity - fwd * fwd_speed
 		linear_velocity = fwd * target + lateral
-	# Camera shake feedback (player only — bots' boosts don't shake the player's camera)
 	if player_id == 1 and _camera and _camera.has_method("add_shake"):
 		_camera.add_shake(1.2)
 
 
 func _on_collision_impact(_body: Node) -> void:
-	# Shake camera proportional to current speed (only player's camera matters)
 	if player_id != 1 or _camera == null or not _camera.has_method("add_shake"):
 		return
 	var v: float = linear_velocity.length()
 	if v < 25.0:
-		return  # ignore gentle bumps
+		return
 	var amount: float = clamp((v - 25.0) * 0.06, 0.4, 2.5)
 	_camera.add_shake(amount)
-	# Crash SFX — heavier sound at higher speed
 	if AudioManager:
 		var key: String = "hit_heavy" if v > 35.0 else "hit_light"
 		var pitch: float = clamp(0.9 + v * 0.005, 0.8, 1.3)
@@ -314,27 +260,18 @@ func _ready() -> void:
 	axis_lock_angular_z = true
 	linear_damp = 0.5
 	angular_damp = 4.0
-	# v0.19.1: revert to default layer/mask (1/1) — boost pads' Area3D monitors
-	# layer 1 by default, so changing cars to layer 2 silently broke boost
-	# detection in BOTH solo and MP. Default RigidBody3D on layer 1 already
-	# collides with other RigidBody3Ds on layer 1, so no need to escalate.
 	collision_layer = 1
 	collision_mask = 1
-	# Derive phase from spawn position (initial_path_phase is just a fallback)
-	_path_phase = PathUtils.phase_from_position(global_position)
 	if hud_label_path and not hud_label_path.is_empty():
 		_hud_label = get_node_or_null(hud_label_path) as Label
-	# Try to load a Kenney .glb model first; fall back to primitive build if missing
 	if not _build_car_visual_from_glb():
 		_build_car_visual(car_color)
-	# Particle FX (drift smoke from rear corners + boost trail from center rear)
 	_smoke_left = _make_smoke_emitter(Vector3(-0.45, 0.0, 0.95))
 	_smoke_right = _make_smoke_emitter(Vector3(0.45, 0.0, 0.95))
 	_boost_trail = _make_boost_emitter(Vector3(0.0, 0.05, 1.05))
 	add_child(_smoke_left)
 	add_child(_smoke_right)
 	add_child(_boost_trail)
-	# Camera shake setup (player 1 only — that's whose camera we follow)
 	if camera_path and not camera_path.is_empty():
 		_camera = get_node_or_null(camera_path)
 	if player_id == 1:
@@ -346,7 +283,6 @@ func _ready() -> void:
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
-		# T toggles speed mode for player 1 only (debug feature)
 		if event.keycode == KEY_T and player_id == 1:
 			_speed_mode = (_speed_mode + 1) % SPEED_MODES.size()
 			_apply_speed_mode()
@@ -376,58 +312,37 @@ func _physics_process(delta: float) -> void:
 	var fwd_speed: float = vel.dot(fwd)
 	var lateral_speed: float = vel.dot(right)
 
-	# Drive the global engine pitch from P1's forward speed
 	if player_id == 1 and AudioManager:
 		var ratio: float = clamp(absf(fwd_speed) / TOP_SPEED, 0.0, 1.5)
 		AudioManager.set_engine_speed_ratio(ratio)
 
-	# --- STEERING (2 buttons only) — read first because it modulates the effective top speed ---
 	var steer_input: float = 0.0
 	if Input.is_action_pressed(_left_action):
 		steer_input += 1.0
 	if Input.is_action_pressed(_right_action):
 		steer_input -= 1.0
 
-	# --- REVERSE / AUTO-ACCEL (mutually exclusive) ---
-	# Effective top: base × catch-up rubber × off-track malus × (1 - steer_drag)
-	var top: float = _effective_top_speed() * _catch_up_factor() * _off_track_factor() * (1.0 - abs(steer_input) * STEER_TOP_LOSS)
+	# Effective top: base × catch-up rubber × (1 - steer_drag). No off-track penalty.
+	var top: float = _effective_top_speed() * _catch_up_factor() * (1.0 - abs(steer_input) * STEER_TOP_LOSS)
 	var reverse_held: bool = Input.is_key_pressed(reverse_keycode)
 	if reverse_held and fwd_speed > REVERSE_TOP_SPEED:
 		apply_central_force(-fwd * ACCEL * mass * REVERSE_FORCE_FACTOR)
 	elif not reverse_held and fwd_speed < top:
 		apply_central_force(fwd * ACCEL * mass)
 
-	# --- DRIFT detection happens BEFORE the angular_velocity assignment
-	# so we can boost yaw rate while drifting (car visibly pivots more)
-	var speed_ratio: float = clamp(fwd_speed / top, 0.0, 1.0)
+	var speed_ratio: float = clamp(fwd_speed / max(top, 0.01), 0.0, 1.0)
 	var is_hard_turning: bool = abs(steer_input) > 0.5 and speed_ratio > HARD_TURN_SPEED_FACTOR
 	var turn_rate: float = lerp(TURN_RATE_LOW_SPEED, TURN_RATE, speed_ratio)
 	if is_hard_turning:
 		turn_rate *= TURN_RATE_DRIFT_BONUS
 	angular_velocity.y = steer_input * turn_rate
 
-	# (Skid SFX disabled — Kenney's plates_slide sounded too robotic for a racing game.
-	# Visual drift smoke particles already give feedback. Real tire screech in V0.17+.)
 	_was_drifting = is_hard_turning
 
-	# --- DRIFT / GRIP --- (is_hard_turning already computed above)
 	var grip: float = DRIFT_GRIP if is_hard_turning else LATERAL_GRIP
 	var lateral_correction: Vector3 = -right * lateral_speed * grip * delta
 	apply_central_impulse(lateral_correction * mass)
 
-	# --- Re-anchor _path_phase to actual position each frame
-	# Reject oval-flips near crossing (same fix as bot_car.gd) — preserves correct ranking.
-	var proposed_phase: float = PathUtils.phase_from_position(global_position)
-	var phase_delta: float = abs(wrapf(proposed_phase - _path_phase, -0.5, 0.5))
-	if phase_delta < 0.1:
-		_path_phase = proposed_phase
-	else:
-		var path_speed: float = max(0.0, fwd_speed)
-		var phase_advance: float = (path_speed * delta) / PathUtils.PATH_PERIMETER
-		_path_phase = wrapf(_path_phase + phase_advance, 0.0, 1.0)
-
-	# --- PARTICLE FX ---
-	# Direction updated each frame to match car backward in world frame (local_coords = false)
 	var back_dir: Vector3 = -fwd
 	if _smoke_left:
 		_smoke_left.emitting = is_hard_turning

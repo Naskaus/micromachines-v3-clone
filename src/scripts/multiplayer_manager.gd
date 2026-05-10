@@ -113,9 +113,8 @@ func _state_payload(racer: Node) -> Dictionary:
 	var speed: float = 0.0
 	if racer is RigidBody3D:
 		speed = (racer as RigidBody3D).linear_velocity.length()
+	# v0.20: phase is no longer tracked — kept at 0.0 for protocol compat.
 	var phase: float = 0.0
-	if "_path_phase" in racer:
-		phase = racer._path_phase
 	# Race-progress fields, when the racer exposes them via shared duck-typing.
 	var laps: int = 0
 	var next_arch: int = 0

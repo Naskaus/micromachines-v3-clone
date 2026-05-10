@@ -1,23 +1,18 @@
 extends RigidBody3D
 
-const PathUtils = preload("res://scripts/path_utils.gd")
-
-# AI bot car — follows the FIGURE-8 path defined by PathUtils.
-# Each bot tracks its own _path_phase and steers toward path_at(phase + lookahead).
-# Magnetic pull-back if the bot strays too far from path_at(phase).
-# Same physics tuning as player (BASELINE V0.3) for symmetric collisions.
+# AI bot car — V0.20 arch-based.
+# Each frame, bot reads its target arch position from meta (set by race_manager)
+# and steers toward it. No path/spline lookahead anymore.
+# Rubber-banding compares arches_passed vs P1.
 
 @export var bot_color: Color = Color(0.2, 0.4, 0.9, 1.0)
-@export var skill: float = 1.0  # multiplies top speed
+@export var skill: float = 1.0
 @export var player_path: NodePath
-@export var racing_line_offset: float = 0.0  # m perpendicular to centerline (- inner, + outer)
-@export var driving_imperfection: float = 0.25  # 0 = perfect line, 0.5 = drunken sailor
 @export var car_model_path: String = ""
 @export var car_model_scale: float = 1.0
 @export var car_model_y_offset: float = -0.25
-@export var initial_path_phase: float = 0.0  # where to start on the figure-8
 
-# BASELINE V0.3 physics — v0.18.0: -20% scale, matches car.gd
+# BASELINE V0.3 physics — v0.18.0 -20% scale
 const TOP_SPEED := 33.6
 const ACCEL := 16.0
 const TURN_RATE := 3.4
@@ -28,26 +23,21 @@ const DRIFT_GRIP := 1.8
 const HARD_TURN_SPEED_FACTOR := 0.55
 const STEER_TOP_LOSS := 0.15
 
-# Off-track + path
-const TRACK_HALF_WIDTH := 6.0
-const OFF_TRACK_MALUS := 0.5
-const OFF_PATH_THRESHOLD := 7.0  # m from preferred path before magnetic pull engages
-const PATH_PULL_FORCE := 6.0    # N per meter of off-path offset (gentle nudge, not catapult)
-
 # AI tuning
-const LOOKAHEAD_PHASE := 0.012   # ~6m of path ahead per meter of advance
 const STEER_GAIN := 2.0
 const RAYCAST_LENGTH := 7.0
 const AVOID_STEER_BLEND := 0.7
+const NOISE_SCALE := 0.25
 
-# Rubber-banding (catch-up vs P1)
+# Rubber-banding (vs player). Compares arches_passed delta.
+# +1 arch ahead of player → bot slowed by 18%; +1 arch behind → boosted by 18%.
+const RUBBER_PER_ARCH := 0.18
 const RUBBER_MAX := 0.50
-const RUBBER_DEAD_ZONE := 0.02
+const RUBBER_DEAD_ZONE_ARCHES := 1
 
 var _base_top_speed: float = TOP_SPEED
 var _bot_top_speed: float = TOP_SPEED
 var _player: Node3D = null
-var _path_phase: float = 0.0
 
 # Boost
 var _boost_until: float = 0.0
@@ -60,12 +50,12 @@ var _boost_trail: CPUParticles3D
 
 # Driving imperfection
 var _noise_phase: float = 0.0
+@export var driving_imperfection: float = 0.25
 
 
 func apply_boost(duration: float, factor: float) -> void:
 	_boost_until = Time.get_ticks_msec() / 1000.0 + duration
 	_boost_factor = factor
-	# Snap velocity instantly forward — same as player
 	var fwd: Vector3 = -transform.basis.z
 	var fwd_speed: float = linear_velocity.dot(fwd)
 	var target: float = _bot_top_speed * factor
@@ -81,49 +71,21 @@ func _effective_top_speed() -> float:
 	return s
 
 
-func _off_track_factor() -> float:
-	# Distance to closest of the two ovals
-	var p: Vector3 = global_position
-	var d_top: float = _dist_to_ellipse_center(p, -PathUtils.OVAL_H)
-	var d_bot: float = _dist_to_ellipse_center(p, PathUtils.OVAL_H)
-	var d: float = min(d_top, d_bot)
-	if d > TRACK_HALF_WIDTH:
-		return OFF_TRACK_MALUS
-	return 1.0
-
-
-func _dist_to_ellipse_center(pos: Vector3, cz: float) -> float:
-	var fx: float = pos.x
-	var fz: float = pos.z - cz
-	var a2: float = PathUtils.OVAL_A * PathUtils.OVAL_A
-	var b2: float = PathUtils.OVAL_B * PathUtils.OVAL_B
-	var f: float = (fx * fx) / a2 + (fz * fz) / b2 - 1.0
-	var gx: float = 2.0 * fx / a2
-	var gz: float = 2.0 * fz / b2
-	var gmag: float = sqrt(gx * gx + gz * gz)
-	return abs(f) / max(gmag, 0.0001)
-
-
 func _ready() -> void:
 	axis_lock_angular_x = true
 	axis_lock_angular_z = true
 	linear_damp = 0.5
 	angular_damp = 4.0
-	# v0.19.1: revert to default layer/mask — see car.gd comment.
 	collision_layer = 1
 	collision_mask = 1
 	_base_top_speed = TOP_SPEED * skill
 	_bot_top_speed = _base_top_speed
 	_noise_phase = randf_range(0.0, TAU)
-	# Derive path phase from actual spawn position (avoids huge off-path values when grid spawns spread cars)
-	_path_phase = PathUtils.phase_from_position(global_position)
 	if player_path and not player_path.is_empty():
 		_player = get_node_or_null(player_path) as Node3D
 
-	# Try Kenney .glb first; fallback to primitives
 	if not _build_car_visual_from_glb():
 		_build_car_visual(bot_color)
-	# Particle FX
 	_smoke_left = _make_smoke_emitter(Vector3(-0.45, 0.0, 0.95))
 	_smoke_right = _make_smoke_emitter(Vector3(0.45, 0.0, 0.95))
 	_boost_trail = _make_boost_emitter(Vector3(0.0, 0.05, 1.05))
@@ -279,56 +241,60 @@ func _make_boost_emitter(local_offset: Vector3) -> CPUParticles3D:
 	return p
 
 
+func _arches_passed_for(node: Node) -> int:
+	if node == null:
+		return 0
+	if node.has_meta("race_arches_passed_total"):
+		return int(node.get_meta("race_arches_passed_total", 0))
+	return 0
+
+
 func _physics_process(delta: float) -> void:
 	if freeze:
 		return
 
 	var pos: Vector3 = global_position
 
-	# 1. Lookahead target on the figure-8 path (with optional offset perpendicular)
-	var target: Vector3 = PathUtils.path_at(_path_phase + LOOKAHEAD_PHASE)
-	target.y = pos.y
-	if abs(racing_line_offset) > 0.001:
-		var tangent: Vector3 = PathUtils.tangent_at(_path_phase + LOOKAHEAD_PHASE)
-		var perp: Vector3 = Vector3(-tangent.z, 0, tangent.x)  # 90° rotation in XZ
-		target += perp * racing_line_offset
+	# 1. Target = next arch position pushed by race_manager. Until set, fall through.
+	var target_pos: Vector3 = pos
+	var has_target: bool = false
+	if has_meta("race_next_arch_pos"):
+		target_pos = get_meta("race_next_arch_pos") as Vector3
+		has_target = true
 
-	# 2. Compute path proximity (used only for avoidance dodge direction now — NO magnetic pull)
-	var path_pt: Vector3 = PathUtils.path_at(_path_phase)
-	path_pt.y = pos.y
-	var to_path: Vector3 = path_pt - pos
-	to_path.y = 0.0
-
-	# 3. Physics inputs
+	# 2. Steering inputs
 	var fwd: Vector3 = -transform.basis.z
 	var right: Vector3 = transform.basis.x
 	var vel: Vector3 = linear_velocity
 	var fwd_speed: float = vel.dot(fwd)
 	var lateral_speed: float = vel.dot(right)
 
-	# 4. Rubber-banding vs P1 — bot AHEAD = slower (let P1 catch up); BEHIND = faster (chase P1)
+	# 3. Rubber-banding vs P1 by arches_passed delta
 	if _player:
-		var p_phase: float = PathUtils.phase_from_position(_player.global_position)
-		var t_diff: float = wrapf(_path_phase - p_phase, -0.5, 0.5)  # signed lap fraction
-		var rubber: float = 1.0
-		if abs(t_diff) > RUBBER_DEAD_ZONE:
-			rubber = 1.0 - clamp(t_diff / 0.25, -1.0, 1.0) * RUBBER_MAX
-		_bot_top_speed = _base_top_speed * rubber
+		var my_passed: int = _arches_passed_for(self)
+		var p_passed: int = _arches_passed_for(_player)
+		var diff: int = my_passed - p_passed
+		if abs(diff) > RUBBER_DEAD_ZONE_ARCHES:
+			var sign_d: int = -1 if diff > 0 else 1
+			var mag: float = clamp(float(abs(diff) - RUBBER_DEAD_ZONE_ARCHES) * RUBBER_PER_ARCH, 0.0, RUBBER_MAX)
+			var rubber: float = 1.0 + float(sign_d) * mag
+			_bot_top_speed = _base_top_speed * rubber
+		else:
+			_bot_top_speed = _base_top_speed
 
-	# 5. (Magnetic pull removed — was catapulting bots into walls. Steering alone keeps them on path.)
-
-	# 6. Steering: cross product fwd × to_target
-	var to_target: Vector3 = target - pos
-	to_target.y = 0.0
+	# 4. Steering toward target arch
 	var centerline_steer: float = 0.0
-	if to_target.length_squared() > 0.0001:
-		var cross_y: float = fwd.z * to_target.x - fwd.x * to_target.z
-		var fwd_xz_len: float = sqrt(fwd.x * fwd.x + fwd.z * fwd.z)
-		var to_target_len: float = to_target.length()
-		var sin_angle: float = cross_y / (fwd_xz_len * to_target_len + 0.0001)
-		centerline_steer = clamp(sin_angle * STEER_GAIN, -1.0, 1.0)
+	if has_target:
+		var to_target: Vector3 = target_pos - pos
+		to_target.y = 0.0
+		if to_target.length_squared() > 0.0001:
+			var cross_y: float = fwd.z * to_target.x - fwd.x * to_target.z
+			var fwd_xz_len: float = sqrt(fwd.x * fwd.x + fwd.z * fwd.z)
+			var to_target_len: float = to_target.length()
+			var sin_angle: float = cross_y / (fwd_xz_len * to_target_len + 0.0001)
+			centerline_steer = clamp(sin_angle * STEER_GAIN, -1.0, 1.0)
 
-	# 7. Obstacle avoidance via raycast
+	# 5. Obstacle avoidance via raycast
 	var avoid_steer: float = 0.0
 	var avoid_active: bool = false
 	var space_state: PhysicsDirectSpaceState3D = get_world_3d().direct_space_state
@@ -343,23 +309,19 @@ func _physics_process(delta: float) -> void:
 			var to_hit: Vector3 = hit.position - pos
 			to_hit.y = 0.0
 			var hit_cross: float = fwd.z * to_hit.x - fwd.x * to_hit.z
+			# Steer away from the obstacle
+			avoid_steer = -sign(hit_cross) * 0.9
 			if abs(hit_cross) < 0.5:
-				if to_path.length() > 0.5:
-					var center_cross: float = fwd.z * to_path.x - fwd.x * to_path.z
-					avoid_steer = sign(center_cross) * 0.9
-				else:
-					avoid_steer = 0.9
-			else:
-				avoid_steer = -sign(hit_cross) * 0.9
+				avoid_steer = 0.9
 			avoid_active = true
 
-	# 8. Driving imperfection — sinusoidal wobble
+	# 6. Driving imperfection — sinusoidal wobble
 	if driving_imperfection > 0.001:
 		var t_now: float = Time.get_ticks_msec() / 1000.0
 		var noise: float = sin(t_now * 1.7 + _noise_phase) * 0.65 + sin(t_now * 0.43 + _noise_phase * 1.7) * 0.45
-		centerline_steer += noise * driving_imperfection
+		centerline_steer += noise * driving_imperfection * NOISE_SCALE
 
-	# 9. Combine steer
+	# 7. Combine steer
 	var steer_input: float
 	if avoid_active:
 		steer_input = lerp(centerline_steer, avoid_steer, AVOID_STEER_BLEND)
@@ -367,37 +329,25 @@ func _physics_process(delta: float) -> void:
 		steer_input = centerline_steer
 	steer_input = clamp(steer_input, -1.0, 1.0)
 
-	# 10. Auto-acceleration with off-track + steer drag
-	var top: float = _effective_top_speed() * _off_track_factor() * (1.0 - abs(steer_input) * STEER_TOP_LOSS)
+	# 8. Auto-acceleration with steer drag (no off-track penalty in arch-based)
+	var top: float = _effective_top_speed() * (1.0 - abs(steer_input) * STEER_TOP_LOSS)
 	if fwd_speed < top:
 		apply_central_force(fwd * ACCEL * mass)
 
-	# 11. Apply yaw rate (drift bonus when hard-turning)
-	var speed_ratio: float = clamp(fwd_speed / top, 0.0, 1.0)
+	# 9. Apply yaw rate (drift bonus when hard-turning)
+	var speed_ratio: float = clamp(fwd_speed / max(top, 0.01), 0.0, 1.0)
 	var is_hard_turning: bool = abs(steer_input) > 0.5 and speed_ratio > HARD_TURN_SPEED_FACTOR
 	var turn_rate: float = lerp(TURN_RATE_LOW_SPEED, TURN_RATE, speed_ratio)
 	if is_hard_turning:
 		turn_rate *= TURN_RATE_DRIFT_BONUS
 	angular_velocity.y = steer_input * turn_rate
 
-	# 12. Drift / lateral grip
+	# 10. Drift / lateral grip
 	var grip: float = DRIFT_GRIP if is_hard_turning else LATERAL_GRIP
 	var lateral_correction: Vector3 = -right * lateral_speed * grip * delta
 	apply_central_impulse(lateral_correction * mass)
 
-	# 13. Re-anchor _path_phase — but reject suspect oval-flips near the crossing.
-	#     phase_from_position picks closest oval; near crossing, a side-offset bot can be misclassified.
-	#     If the proposed phase jumps > 10% of the lap from the previous phase, fall back to forward-integration.
-	var proposed_phase: float = PathUtils.phase_from_position(pos)
-	var phase_delta: float = abs(wrapf(proposed_phase - _path_phase, -0.5, 0.5))
-	if phase_delta < 0.1:
-		_path_phase = proposed_phase
-	else:
-		var path_speed: float = max(0.0, fwd_speed)  # m/s along forward
-		var phase_advance: float = (path_speed * delta) / PathUtils.PATH_PERIMETER
-		_path_phase = wrapf(_path_phase + phase_advance, 0.0, 1.0)
-
-	# 14. Particle FX
+	# 11. Particle FX
 	var back_dir: Vector3 = -fwd
 	if _smoke_left:
 		_smoke_left.emitting = is_hard_turning

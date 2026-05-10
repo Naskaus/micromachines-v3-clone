@@ -1,32 +1,33 @@
 extends Node
 
-const PathUtils = preload("res://scripts/path_utils.gd")
-
-# Race orchestrator — solo + MP-host mode runs full simulation locally and
-# pushes per-racer state up to the server. MP-client mode renders the server's
-# race_state instead of computing its own ranking.
+# Race orchestrator (V0.20 — arch-based, path-free).
 #
-# v0.19.0 (Phase 3) changes:
-#   * Sets meta on each racer (race_laps / race_next_arch / race_finished) so
-#     multiplayer_manager can include them in state packets.
-#   * In MP-client mode, _state_runs_locally = false → skip arch detection,
-#     elimination, leader pick. Subscribe to NetworkClient.race_state_received
-#     and use that for HUD + camera leader.
-#   * Wires elimination_manager once the race starts.
+# Flow:
+#   1. _ready() resolves the TrackScene (auto-discovered or via track_scene_path)
+#      and reads its arches + spawn_slots.
+#   2. Cars (players + bots) are repositioned into spawn_slots at countdown.
+#   3. Each Arch_i Area3D body_entered is wired to _on_arch_entered(body, i).
+#   4. A pass only counts if i == car.next_arch_index. Else silently ignored
+#      (Q1b — pas de murs, scoring force l'ordre).
+#   5. After last arch in the sequence → laps += 1 → next_arch_index = 0.
+#      laps == TOTAL_LAPS → finished.
+#
+# Camera leader = max(arches_passed_total * 1000 + 1/dist_to_next_arch).
+# Bot AI receives next-arch position via meta and rubber-bands by arch delta.
+#
+# MP-host runs the same sim and broadcasts. MP-client reads server race_state.
 
 const TOTAL_LAPS := 3
 const COUNTDOWN_SECONDS := 3
 const MIN_LAP_TIME := 4.0
-const ELIMINATION_DIST_FROM_LEADER := 120.0  # m — solo fallback only
-const LEADER_CHANGE_HYSTERESIS := 0.03
+const LEADER_CHANGE_HYSTERESIS := 0.3
 const POST_FIRST_FINISH_TIMEOUT := 18.0
 
 enum State { MENU, PRE_RACE, COUNTDOWN, RACING, FINISHED }
 
 @export var player_paths: Array[NodePath] = []
 @export var bot_paths: Array[NodePath] = []
-@export var finish_line_path: NodePath
-@export var arch_paths: Array[NodePath] = []
+@export var track_scene_path: NodePath
 @export var camera_path: NodePath
 @export var menu_label_path: NodePath
 @export var countdown_label_path: NodePath
@@ -61,17 +62,11 @@ var _elimination_manager: Node = null
 var _lives_label: Label
 var _is_network_race: bool = false
 var _is_network_host: bool = false
-# Network state runs locally for solo + MP-host. Off for MP-client (server is authority).
 var _state_runs_locally: bool = true
-# Cache of latest authoritative race_state from server, used by MP-client renderer.
 var _last_race_state: Dictionary = {}
 
-const ARCH_COLOR_NAMES: Array[String] = ["VERTE", "JAUNE", "ORANGE", "CYAN", "ROUGE", "VIOLETTE"]
-const HIGHLIGHT_EMISSION := 4.0
-const NORMAL_EMISSION := 1.5
-var _arch_nodes: Array[Area3D] = []
-var _arch_meshes: Array = []
-var _arch_phases: Array[float] = []
+var _track_scene: Node = null
+var _arches: Array = []           # Array[Node3D] from TrackScene.arches
 var _last_highlighted_idx: int = -1
 
 
@@ -95,28 +90,12 @@ func _ready() -> void:
 		if b:
 			_register_racer(b, b.name, false)
 
-	for i in range(arch_paths.size()):
-		var arch: Area3D = get_node_or_null(arch_paths[i]) as Area3D
-		if arch:
-			arch.body_entered.connect(_on_arch_entered.bind(i))
-			_arch_nodes.append(arch)
-			_arch_phases.append(PathUtils.phase_from_position(arch.global_position))
-			var meshes: Array = []
-			for child_name in ["PillarLeft", "PillarRight", "Crossbar"]:
-				var m: MeshInstance3D = arch.get_node_or_null(child_name) as MeshInstance3D
-				if m:
-					var mat: StandardMaterial3D = m.get_active_material(0) as StandardMaterial3D
-					if mat:
-						mat = mat.duplicate() as StandardMaterial3D
-						m.set_surface_override_material(0, mat)
-						meshes.append(mat)
-			_arch_meshes.append(meshes)
-		else:
-			push_warning("RaceManager: arch_paths[%d] is missing" % i)
+	# Track is instanced by Main._ready (parent runs after children's _ready),
+	# so we must defer track-dependent setup to the next idle tick.
+	call_deferred("_after_track_loaded")
 
 	if _results_label:
 		_results_label.visible = false
-
 	for r in _racers:
 		r.freeze = true
 	if _race_info_label:
@@ -140,7 +119,7 @@ func _ready() -> void:
 			_multiplayer_menu.multiplayer_race_requested.connect(_on_multiplayer_race_requested)
 	else:
 		if _menu_label:
-			_menu_label.text = "MICROMACHINES V3 CLONE\n\n[1]  1 JOUEUR  (A/D)\n[2]  2 JOUEURS  (A/D + J/L)\n\n[BACKSPACE] reset"
+			_menu_label.text = "MICRONASKAR V3\n\n[1]  1 JOUEUR  (A/D)\n[2]  2 JOUEURS  (A/D + J/L)\n\n[BACKSPACE] reset"
 			_menu_label.visible = true
 	_state = State.MENU
 	if AudioManager:
@@ -148,6 +127,69 @@ func _ready() -> void:
 
 	if NetworkClient:
 		NetworkClient.race_state_received.connect(_on_network_race_state)
+
+
+func _after_track_loaded() -> void:
+	_resolve_track_scene()
+	_wire_arches()
+	_apply_spawn_slots()
+
+
+func _resolve_track_scene() -> void:
+	if track_scene_path and not track_scene_path.is_empty():
+		_track_scene = get_node_or_null(track_scene_path)
+	if _track_scene == null:
+		# Fallback: walk up to root and scan for any TrackScene
+		var root: Node = get_tree().get_root()
+		_track_scene = _find_track_scene(root)
+	if _track_scene == null:
+		push_warning("[RaceManager] No TrackScene found — race will not function")
+
+
+func _find_track_scene(node: Node) -> Node:
+	for child in node.get_children():
+		if child.get_script() != null and child.has_method("arch_count"):
+			return child
+		var deep: Node = _find_track_scene(child)
+		if deep != null:
+			return deep
+	return null
+
+
+func _wire_arches() -> void:
+	if _track_scene == null:
+		return
+	_arches = _track_scene.arches
+	for i in range(_arches.size()):
+		var arch: Area3D = _arches[i] as Area3D
+		if arch == null:
+			continue
+		if not arch.body_entered.is_connected(_on_arch_entered):
+			arch.body_entered.connect(_on_arch_entered.bind(i))
+
+
+func _apply_spawn_slots() -> void:
+	if _track_scene == null:
+		return
+	var slots: Array = _track_scene.spawn_slots
+	if slots.is_empty():
+		return
+	var i: int = 0
+	# Players first, then bots, in registration order.
+	var ordered: Array = []
+	for p in _players:
+		ordered.append(p)
+	for r in _racers:
+		if not (r in _players):
+			ordered.append(r)
+	for racer in ordered:
+		if i >= slots.size():
+			break
+		var t: Transform3D = slots[i]
+		racer.global_transform = Transform3D(t.basis, t.origin + Vector3(0.0, 0.5, 0.0))
+		racer.linear_velocity = Vector3.ZERO
+		racer.angular_velocity = Vector3.ZERO
+		i += 1
 
 
 func _on_solo_race_requested(num_players: int) -> void:
@@ -160,11 +202,7 @@ func _on_solo_race_requested(num_players: int) -> void:
 func _on_multiplayer_race_requested(host: bool, _code: String, _peers: Array) -> void:
 	_is_network_race = true
 	_is_network_host = host
-	# Server is authoritative. Host still runs the local sim (for bots etc.)
-	# and broadcasts state. Client only renders.
 	_state_runs_locally = host
-	# Host: keep its own bots, they'll be registered by multiplayer_manager.
-	# Client: drop bots from the local lineup — they're rendered as ghosts.
 	if not host:
 		for bp in bot_paths:
 			var b: Node = get_node_or_null(bp)
@@ -180,20 +218,22 @@ func _register_racer(racer: Node, display_name: String, is_player: bool) -> void
 		"is_player": is_player,
 		"laps": 0,
 		"last_lap_time": 0.0,
-		"last_phase": 0.0,
 		"lap_times": [] as Array[float],
 		"finish_time": 0.0,
 		"finished": false,
 		"next_arch_index": 0,
+		"arches_passed_total": 0,
 	}
 	if racer is Node:
 		racer.set_meta("race_laps", 0)
 		racer.set_meta("race_next_arch", 0)
 		racer.set_meta("race_finished", false)
+		racer.set_meta("race_arches_passed_total", 0)
 
 
 func _start_countdown() -> void:
 	_state = State.COUNTDOWN
+	_apply_spawn_slots()
 	_update_leader_and_camera()
 	for n in range(COUNTDOWN_SECONDS, 0, -1):
 		if _countdown_label:
@@ -220,9 +260,6 @@ func _start_race() -> void:
 	for r in _racers:
 		r.freeze = false
 		_racer_data[r].last_lap_time = _race_start_time
-	# Wire elimination tracker — applies to both solo (camera-edge fallback) and
-	# MP-host (off-screen → broadcast via NetworkClient). MP-client stays passive
-	# and reacts to elim_event broadcasts received from the server.
 	_wire_elimination_manager()
 
 
@@ -235,7 +272,6 @@ func _wire_elimination_manager() -> void:
 	if NetworkClient and NetworkClient.is_in_room() and NetworkClient.elimination_mode == "perma":
 		lives_per_racer = 1
 	var entries: Array = []
-	# Local racers (humans + own bots when host)
 	for r in _racers:
 		if not is_instance_valid(r):
 			continue
@@ -245,15 +281,12 @@ func _wire_elimination_manager() -> void:
 		else:
 			entry["id"] = r.get_instance_id()
 		entries.append(entry)
-	# Remote ghosts (MP only)
 	if _is_network_race and _multiplayer_manager and _multiplayer_manager.has_method("all_ghosts"):
 		var ghosts: Dictionary = _multiplayer_manager.all_ghosts()
 		for pid in ghosts.keys():
 			var g: Node = ghosts[pid]
 			if g and is_instance_valid(g):
 				entries.append({"node": g, "id": int(pid), "is_local": false})
-	# Local player ids — used by elimination_manager so it knows which trackers
-	# correspond to humans on this device.
 	var local_ids: Array = []
 	for p in _players:
 		if "player_id" in p:
@@ -265,7 +298,7 @@ func _on_arch_entered(body: Node, arch_idx: int) -> void:
 	if _state != State.RACING:
 		return
 	if not _state_runs_locally:
-		return  # MP-client doesn't run lap logic
+		return
 	if not _racer_data.has(body):
 		return
 	var data: Dictionary = _racer_data[body]
@@ -273,10 +306,16 @@ func _on_arch_entered(body: Node, arch_idx: int) -> void:
 		return
 	if arch_idx != data.next_arch_index:
 		return
-	var last_arch_idx: int = arch_paths.size() - 1
+	data.arches_passed_total += 1
+	var n: int = _arches.size()
+	if n == 0:
+		return
+	var last_arch_idx: int = n - 1
 	if arch_idx == last_arch_idx:
 		var now: float = Time.get_ticks_msec() / 1000.0
-		if now - data.last_lap_time < MIN_LAP_TIME:
+		if now - data.last_lap_time < MIN_LAP_TIME and data.laps > 0:
+			data.next_arch_index = 0
+			_publish_meta(body, data)
 			return
 		var lap_duration: float = now - data.last_lap_time
 		data.lap_times.append(lap_duration)
@@ -305,6 +344,7 @@ func _publish_meta(racer: Node, data: Dictionary) -> void:
 	racer.set_meta("race_laps", int(data.laps))
 	racer.set_meta("race_next_arch", int(data.next_arch_index))
 	racer.set_meta("race_finished", bool(data.finished))
+	racer.set_meta("race_arches_passed_total", int(data.arches_passed_total))
 
 
 func _check_race_end() -> void:
@@ -372,13 +412,7 @@ func _process(_delta: float) -> void:
 	if _state == State.RACING:
 		if _state_runs_locally:
 			_feed_progress_gaps_to_players()
-			# v0.19.2: distance-based elimination removed. Seb wants the peloton
-			# kept all race long ("c'est plus marrant"). Bot rubber-banding keeps
-			# stragglers in range anyway, and POST_FIRST_FINISH_TIMEOUT (18s)
-			# still cuts the race off after the first finisher so AFK bots
-			# can't stall the end. MP off-screen elim is opt-in via the lobby
-			# toggle and runs only when in a network room.
-			_check_phase_passes()
+			_publish_next_arch_targets()
 			if _first_finish_time > 0.0:
 				_check_race_end()
 		_update_race_hud()
@@ -386,36 +420,22 @@ func _process(_delta: float) -> void:
 		_update_arch_highlight()
 
 
-func _check_phase_passes() -> void:
-	if _arch_phases.is_empty():
-		return
-	var max_passes_per_racer: int = 3
-	for racer in _racers:
-		if not _racer_data.has(racer):
+func _publish_next_arch_targets() -> void:
+	# Bots read their target arch position from meta each frame.
+	for r in _racers:
+		if not _racer_data.has(r):
 			continue
-		var data: Dictionary = _racer_data[racer]
-		if data.finished or _eliminated.has(racer):
+		var data: Dictionary = _racer_data[r]
+		if data.finished or _eliminated.has(r):
 			continue
-		if not "_path_phase" in racer:
-			continue
-		var passes: int = 0
-		while passes < max_passes_per_racer:
-			var next_idx: int = data.next_arch_index
-			if next_idx < 0 or next_idx >= _arch_phases.size():
-				break
-			var arch_phase: float = _arch_phases[next_idx]
-			var racer_phase: float = racer._path_phase
-			var delta: float = wrapf(racer_phase - arch_phase, -0.5, 0.5)
-			if delta <= 0.0 or delta > 0.30:
-				break
-			_on_arch_entered(racer, next_idx)
-			if data.next_arch_index == next_idx:
-				break
-			passes += 1
+		var idx: int = data.next_arch_index
+		if idx >= 0 and idx < _arches.size():
+			var arch: Node3D = _arches[idx]
+			r.set_meta("race_next_arch_pos", arch.global_position)
 
 
 func _update_arch_highlight() -> void:
-	if _players.is_empty() or _arch_meshes.is_empty():
+	if _players.is_empty() or _arches.is_empty():
 		return
 	var p1: Node = _players[0]
 	if not _racer_data.has(p1):
@@ -426,11 +446,10 @@ func _update_arch_highlight() -> void:
 	var target_idx: int = data.next_arch_index
 	if target_idx == _last_highlighted_idx:
 		return
-	for i in range(_arch_meshes.size()):
-		var energy: float = HIGHLIGHT_EMISSION if i == target_idx else NORMAL_EMISSION
-		for mat in _arch_meshes[i]:
-			if mat is StandardMaterial3D:
-				mat.emission_energy_multiplier = energy
+	for i in range(_arches.size()):
+		var arch: Node = _arches[i]
+		if arch.has_method("set_highlighted"):
+			arch.set_highlighted(i == target_idx)
 	_last_highlighted_idx = target_idx
 
 
@@ -527,9 +546,6 @@ func _remove_racer_from_race(racer: Node) -> void:
 
 
 func _update_leader_and_camera() -> void:
-	# v0.19.1: shared leader-cam in BOTH host and client during MP. The host
-	# previously kept following its own car (because _state_runs_locally=true)
-	# which broke the B1 spec — both ends of the room must see the same view.
 	if _is_network_race:
 		_apply_network_leader_to_camera()
 		return
@@ -550,9 +566,6 @@ func _update_leader_and_camera() -> void:
 
 
 func _apply_network_leader_to_camera() -> void:
-	# B1 — shared leader-cam from server's authoritative leader_id.
-	# Until the first race_state arrives, fall back to the local player so the
-	# host doesn't sit on a stale Camera3D during the countdown.
 	if _last_race_state.is_empty():
 		if _current_leader == null and _players.size() > 0:
 			_current_leader = _players[0]
@@ -565,18 +578,15 @@ func _apply_network_leader_to_camera() -> void:
 	var leader_id: int = int(leader_id_v)
 	var node: Node = _resolve_network_node(leader_id)
 	if node == null:
-		print("[RaceManager] leader %d unresolved (no local node, no ghost yet)" % leader_id)
 		return
 	if node == _current_leader:
 		return
-	print("[RaceManager] leader-cam → %s (id=%d)" % [node.name, leader_id])
 	_current_leader = node
 	if _camera and _camera.has_method("set_leader_target"):
 		_camera.set_leader_target(node)
 
 
 func _resolve_network_node(player_id: int) -> Node:
-	# Local human → P1
 	if NetworkClient and player_id == NetworkClient.my_player_id:
 		if _players.size() > 0:
 			return _players[0]
@@ -616,25 +626,6 @@ func _get_race_leader() -> Node:
 	return null
 
 
-func _check_eliminations() -> void:
-	# The elimination_manager handles MP off-screen elim. Solo + MP-host still
-	# get this distance-based fallback for completely runaway cars.
-	var race_leader: Node = _get_race_leader()
-	if race_leader == null:
-		return
-	var leader_pos: Vector3 = race_leader.global_position
-	for r in _racers:
-		if r == race_leader:
-			continue
-		if _eliminated.has(r):
-			continue
-		if _racer_data[r].finished:
-			continue
-		var dist: float = r.global_position.distance_to(leader_pos)
-		if dist > ELIMINATION_DIST_FROM_LEADER:
-			_eliminate(r)
-
-
 func _eliminate(racer: Node) -> void:
 	if _eliminated.has(racer):
 		return
@@ -653,7 +644,6 @@ func _eliminate(racer: Node) -> void:
 func _update_race_hud() -> void:
 	if _race_info_label == null or _players.is_empty():
 		return
-	# In MP-client mode, ranking comes from server. Render that.
 	if not _state_runs_locally and _is_network_race and not _last_race_state.is_empty():
 		_render_network_hud()
 		return
@@ -690,8 +680,14 @@ func _update_race_hud() -> void:
 			best_lap_str = "  best %.1fs" % best
 		lines.append("P%d  Tour %d/%d  %s/%d  ⏱ %.1fs%s" % [i + 1, min(d.laps + 1, TOTAL_LAPS), TOTAL_LAPS, _place_label(pos), _racers.size(), current_lap_time, best_lap_str])
 		var next_idx: int = d.next_arch_index
-		if next_idx >= 0 and next_idx < ARCH_COLOR_NAMES.size():
-			lines.append("       → Prochaine arche : %s" % ARCH_COLOR_NAMES[next_idx])
+		if next_idx >= 0 and next_idx < _arches.size():
+			var arch: Node = _arches[next_idx]
+			var label: String = ""
+			if arch and "label" in arch:
+				label = String(arch.label)
+			if label.is_empty():
+				label = "Arche %d" % (next_idx + 1)
+			lines.append("       → Prochaine arche : %s" % label)
 	_race_info_label.text = "\n".join(lines)
 
 
@@ -703,7 +699,6 @@ func _render_network_hud() -> void:
 		var leader_entry: Dictionary = rankings[0]
 		var leader_label: String = _label_for_id(int(leader_id_v))
 		lines.append("LEADER : %s — Tour %d/%d" % [leader_label, min(int(leader_entry.get("laps", 0)) + 1, TOTAL_LAPS), TOTAL_LAPS])
-	# Local player line
 	var my_id: int = -1
 	if NetworkClient:
 		my_id = NetworkClient.my_player_id
@@ -713,10 +708,15 @@ func _render_network_hud() -> void:
 			var na: int = int(entry.get("next_arch", 0))
 			var pos_idx: int = rankings.find(entry) + 1
 			lines.append("P1  Tour %d/%d  %s/%d  (réseau)" % [min(lap_v + 1, TOTAL_LAPS), TOTAL_LAPS, _place_label(pos_idx), rankings.size()])
-			if na >= 0 and na < ARCH_COLOR_NAMES.size():
-				lines.append("       → Prochaine arche : %s" % ARCH_COLOR_NAMES[na])
+			if na >= 0 and na < _arches.size():
+				var arch: Node = _arches[na]
+				var label: String = ""
+				if arch and "label" in arch:
+					label = String(arch.label)
+				if label.is_empty():
+					label = "Arche %d" % (na + 1)
+				lines.append("       → Prochaine arche : %s" % label)
 			break
-	# Lives display when applicable
 	var elim_mode: String = str(_last_race_state.get("elimination_mode", "lives3"))
 	if elim_mode == "lives3":
 		var lives: Dictionary = _last_race_state.get("lives", {})
@@ -751,29 +751,29 @@ func _compute_rankings() -> Array:
 
 
 func _racer_progress(racer: Node) -> float:
+	# Total progress = arches passed * weight + (1 / dist_to_next_arch).
+	# The 1/dist term is fine-grained tie-breaking — closer to next arch = ahead.
 	var data: Dictionary = _racer_data[racer]
-	var laps: float = float(data.laps)
-	var arch_count: float = max(1.0, float(arch_paths.size()))
-	var seg: float = float(data.next_arch_index) / arch_count
+	var passed: float = float(data.arches_passed_total)
 	var fine: float = 0.0
-	if "_path_phase" in racer:
-		fine = racer._path_phase * 0.001
-	return laps + seg + fine
+	var idx: int = data.next_arch_index
+	if idx >= 0 and idx < _arches.size():
+		var arch: Node3D = _arches[idx]
+		var dist: float = max(0.001, racer.global_position.distance_to(arch.global_position))
+		fine = clamp(1.0 / dist, 0.0, 0.99)
+	return passed * 1000.0 + fine
 
 
-func _racer_phase(racer: Node) -> float:
-	if "_path_phase" in racer:
-		return racer._path_phase
-	return PathUtils.phase_from_position(racer.global_position)
-
-
-# Public API for elimination_manager — gives the leader's path_phase so it can
-# respawn carcasses behind the pack.
 func get_leader_phase() -> float:
+	# Compatibility shim for elimination_manager — returns leader's arches_passed_total
+	# normalised by total expected arch passes for the race (for old "phase"-style consumers).
 	var leader: Node = _get_race_leader()
-	if leader != null:
-		return _racer_phase(leader)
-	return 0.0
+	if leader == null:
+		return 0.0
+	var n: int = max(1, _arches.size())
+	var total_arches: float = float(n) * float(TOTAL_LAPS)
+	var passed: float = float(_racer_data[leader].arches_passed_total)
+	return passed / total_arches
 
 
 func get_leader_speed() -> float:
@@ -809,3 +809,13 @@ func get_player_speed() -> float:
 		return 0.0
 	var fwd: Vector3 = -p.transform.basis.z
 	return p.linear_velocity.dot(fwd)
+
+
+# Public API for bots — gives them their target arch's world position.
+func get_arch_target_for(racer: Node) -> Vector3:
+	if not _racer_data.has(racer):
+		return Vector3.ZERO
+	var idx: int = _racer_data[racer].next_arch_index
+	if idx >= 0 and idx < _arches.size():
+		return (_arches[idx] as Node3D).global_position
+	return Vector3.ZERO

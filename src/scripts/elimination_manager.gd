@@ -15,10 +15,8 @@ extends Node
 # server ratifies it and re-broadcasts to all clients (including host) so
 # everyone applies the same visual/state change.
 
-const PathUtils = preload("res://scripts/path_utils.gd")
-
 const OFF_SCREEN_FRAMES_THRESHOLD := 90  # 1.5s @ 60fps
-const RESPAWN_PHASE_OFFSET := 0.05       # spawn behind leader by 5% of the lap
+const RESPAWN_BEHIND_OFFSET := 8.0       # m — spawn this far behind the previous arch
 const RESPAWN_SPEED_FRACTION := 0.5      # half of the leader's speed
 
 @export var camera_path: NodePath
@@ -162,13 +160,12 @@ func _respawn(_tracker_id, tracker: Dictionary) -> void:
 	var node = tracker.get("node")
 	if node == null or not is_instance_valid(node):
 		return
-	# Spawn behind the current leader's path_phase by RESPAWN_PHASE_OFFSET.
-	var leader_phase: float = _get_leader_phase()
-	var target_phase: float = wrapf(leader_phase - RESPAWN_PHASE_OFFSET, 0.0, 1.0)
-	var pos: Vector3 = PathUtils.path_at(target_phase)
+	# Arch-based respawn: place behind the previous arch in the leader's sequence,
+	# facing the next arch. Falls back to (0,0,0) if track scene is unavailable.
+	var pose: Dictionary = _arch_respawn_pose()
+	var pos: Vector3 = pose.get("pos", Vector3.ZERO)
+	var yaw: float = pose.get("yaw", 0.0)
 	pos.y = 0.5
-	var tan: Vector3 = PathUtils.tangent_at(target_phase)
-	var yaw: float = atan2(-tan.x, -tan.z)
 	if node is Node3D:
 		(node as Node3D).global_position = pos
 		(node as Node3D).rotation = Vector3(0, yaw, 0)
@@ -178,18 +175,45 @@ func _respawn(_tracker_id, tracker: Dictionary) -> void:
 		(node as RigidBody3D).angular_velocity = Vector3.ZERO
 
 
-func _get_leader_phase() -> float:
-	if _race_manager and _race_manager.has_method("get_leader_phase"):
-		return float(_race_manager.get_leader_phase())
-	# Fallback: use highest-progress tracker we know about.
-	var best: float = 0.0
+func _arch_respawn_pose() -> Dictionary:
+	if _race_manager == null:
+		return {"pos": Vector3.ZERO, "yaw": 0.0}
+	if not "_arches" in _race_manager:
+		return {"pos": Vector3.ZERO, "yaw": 0.0}
+	var arches: Array = _race_manager._arches
+	if arches.is_empty():
+		return {"pos": Vector3.ZERO, "yaw": 0.0}
+	# Pick the highest-progress racer to anchor the respawn behind
+	var best_passed: int = -1
+	var best_next_idx: int = 0
 	for t in _trackers.values():
 		var n = t.get("node")
-		if n != null and "_path_phase" in n:
-			var p: float = n._path_phase
-			if p > best:
-				best = p
-	return best
+		if n == null or not is_instance_valid(n):
+			continue
+		if not n.has_meta("race_laps") or not n.has_meta("race_next_arch"):
+			continue
+		var laps: int = int(n.get_meta("race_laps", 0))
+		var nxt: int = int(n.get_meta("race_next_arch", 0))
+		var passed: int = laps * arches.size() + nxt
+		if passed > best_passed:
+			best_passed = passed
+			best_next_idx = nxt
+	# Spawn at the arch BEFORE next, offset behind it toward the previous arch direction
+	var n_arches: int = arches.size()
+	var prev_idx: int = (best_next_idx - 1 + n_arches) % n_arches
+	var prev: Node3D = arches[prev_idx] as Node3D
+	var nxt_node: Node3D = arches[best_next_idx] as Node3D
+	if prev == null or nxt_node == null:
+		return {"pos": Vector3.ZERO, "yaw": 0.0}
+	var dir_to_next: Vector3 = nxt_node.global_position - prev.global_position
+	dir_to_next.y = 0.0
+	if dir_to_next.length_squared() < 0.0001:
+		dir_to_next = Vector3.FORWARD
+	dir_to_next = dir_to_next.normalized()
+	var pos: Vector3 = prev.global_position - dir_to_next * RESPAWN_BEHIND_OFFSET
+	# yaw = atan2 of forward direction. Forward in Godot car convention = -Z, so:
+	var yaw: float = atan2(-dir_to_next.x, -dir_to_next.z)
+	return {"pos": pos, "yaw": yaw}
 
 
 func _estimate_leader_speed() -> float:

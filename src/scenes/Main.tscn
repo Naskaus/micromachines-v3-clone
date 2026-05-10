@@ -1,6 +1,7 @@
 [gd_scene load_steps=17 format=3]
 
-[ext_resource type="PackedScene" path="res://scenes/Track01.tscn" id="1_track"]
+[ext_resource type="Script" path="res://scripts/main_root.gd" id="0_main"]
+[ext_resource type="Script" path="res://scripts/track_picker_button.gd" id="1_track"]
 [ext_resource type="PackedScene" path="res://scenes/Car.tscn" id="2_car"]
 [ext_resource type="PackedScene" path="res://scenes/BotCar.tscn" id="3_bot"]
 [ext_resource type="Script" path="res://scripts/camera_follow.gd" id="4_cam"]
@@ -57,8 +58,7 @@ ambient_light_color = Color(0.7, 0.75, 0.85, 1)
 ambient_light_energy = 0.5
 
 [node name="Main" type="Node3D"]
-
-[node name="Track01" parent="." instance=ExtResource("1_track")]
+script = ExtResource("0_main")
 
 [node name="P1_Red" parent="." instance=ExtResource("2_car")]
 transform = Transform3D(0.34144, 0.00000, -0.93990, 0.00000, 1.00000, 0.00000, 0.93990, 0.00000, 0.34144, 57.75421, 0.50000, -12.36886)
@@ -70,7 +70,6 @@ car_color = Color(0.9, 0.2, 0.2, 1)
 car_model_path = "res://assets/cars/race.glb"
 respawn_keycode = 82
 reverse_keycode = 83
-initial_path_phase = 0.05
 
 [node name="P2_Cyan" parent="." instance=ExtResource("2_car")]
 transform = Transform3D(0.34144, 0.00000, -0.93990, 0.00000, 1.00000, 0.00000, 0.93990, 0.00000, 0.34144, 59.80285, 0.50000, -6.72944)
@@ -81,7 +80,6 @@ car_color = Color(0.20, 0.85, 0.95, 1)
 car_model_path = "res://assets/cars/sedan-sports.glb"
 respawn_keycode = 80
 reverse_keycode = 75
-initial_path_phase = 0.05
 
 [node name="Bot1_Blue" parent="." instance=ExtResource("3_bot")]
 transform = Transform3D(0.34144, 0.00000, -0.93990, 0.00000, 1.00000, 0.00000, 0.93990, 0.00000, 0.34144, 53.05469, 0.50000, -10.66166)
@@ -91,7 +89,6 @@ player_path = NodePath("../P1_Red")
 racing_line_offset = 3.0
 driving_imperfection = 0.25
 car_model_path = "res://assets/cars/hatchback-sports.glb"
-initial_path_phase = 0.05
 
 [node name="Bot2_Yellow" parent="." instance=ExtResource("3_bot")]
 transform = Transform3D(0.34144, 0.00000, -0.93990, 0.00000, 1.00000, 0.00000, 0.93990, 0.00000, 0.34144, 55.10333, 0.50000, -5.02224)
@@ -101,7 +98,6 @@ player_path = NodePath("../P1_Red")
 racing_line_offset = 1.0
 driving_imperfection = 0.20
 car_model_path = "res://assets/cars/kart-oobi.glb"
-initial_path_phase = 0.05
 
 [node name="Bot3_Green" parent="." instance=ExtResource("3_bot")]
 transform = Transform3D(0.34144, 0.00000, -0.93990, 0.00000, 1.00000, 0.00000, 0.93990, 0.00000, 0.34144, 48.35517, 0.50000, -8.95446)
@@ -111,7 +107,6 @@ player_path = NodePath("../P1_Red")
 racing_line_offset = -1.0
 driving_imperfection = 0.40
 car_model_path = "res://assets/cars/tractor.glb"
-initial_path_phase = 0.05
 
 [node name="Bot4_Purple" parent="." instance=ExtResource("3_bot")]
 transform = Transform3D(0.34144, 0.00000, -0.93990, 0.00000, 1.00000, 0.00000, 0.93990, 0.00000, 0.34144, 50.40381, 0.50000, -3.31504)
@@ -121,7 +116,6 @@ player_path = NodePath("../P1_Red")
 racing_line_offset = -3.0
 driving_imperfection = 0.15
 car_model_path = "res://assets/cars/race-future.glb"
-initial_path_phase = 0.05
 
 [node name="Camera3D" type="Camera3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 0.258819, 0.965926, 0, -0.965926, 0.258819, 5, 22, 86)
@@ -243,6 +237,19 @@ theme_override_colors/font_outline_color = Color(0.05, 0.05, 0.05, 1)
 theme_override_constants/outline_size = 8
 theme_override_font_sizes/font_size = 56
 
+[node name="TrackPickerButton" type="Button" parent="HUD"]
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -395.0
+offset_top = 12.0
+offset_right = -255.0
+offset_bottom = 50.0
+grow_horizontal = 0
+text = "🏁 Pool Felt"
+script = ExtResource("1_track")
+theme_override_font_sizes/font_size = 16
+
 [node name="FullscreenButton" type="Button" parent="HUD"]
 anchors_preset = 1
 anchor_left = 1.0
@@ -322,7 +329,7 @@ hud_lives_label_path = NodePath("../HUD/LivesLabel")
 script = ExtResource("5_race")
 player_paths = [NodePath("../P1_Red"), NodePath("../P2_Cyan")]
 bot_paths = [NodePath("../Bot1_Blue"), NodePath("../Bot2_Yellow"), NodePath("../Bot3_Green"), NodePath("../Bot4_Purple")]
-arch_paths = [NodePath("../Track01/Arch_1"), NodePath("../Track01/Arch_2"), NodePath("../Track01/Arch_3"), NodePath("../Track01/Arch_4"), NodePath("../Track01/Arch_5"), NodePath("../Track01/Arch_6")]
+track_scene_path = NodePath("../Track")
 camera_path = NodePath("../Camera3D")
 menu_label_path = NodePath("../HUD/MenuLabel")
 countdown_label_path = NodePath("../HUD/CountdownLabel")
