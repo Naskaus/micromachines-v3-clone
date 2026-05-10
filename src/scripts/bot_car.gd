@@ -25,8 +25,11 @@ const STEER_TOP_LOSS := 0.15
 
 # AI tuning
 const STEER_GAIN := 2.0
-const RAYCAST_LENGTH := 7.0
-const AVOID_STEER_BLEND := 0.7
+const RAYCAST_LENGTH := 13.0          # forward raycast — bumped for arch-based steering
+const RAYCAST_SIDE_LENGTH := 8.0      # ±35° side raycasts — early-warn when fwd ray misses corner-clipping
+const RAYCAST_SIDE_ANGLE_DEG := 35.0
+const AVOID_STEER_BLEND := 0.85       # higher prio to avoidance vs centerline (was 0.7)
+const AVOID_BRAKE_FRACTION := 0.55    # cap top speed at 55% when an obstacle is close
 const NOISE_SCALE := 0.25
 
 # Rubber-banding (vs player). Compares arches_passed delta.
@@ -294,26 +297,57 @@ func _physics_process(delta: float) -> void:
 			var sin_angle: float = cross_y / (fwd_xz_len * to_target_len + 0.0001)
 			centerline_steer = clamp(sin_angle * STEER_GAIN, -1.0, 1.0)
 
-	# 5. Obstacle avoidance via raycast
+	# 5. Obstacle avoidance via 3-raycast cone (forward + ±RAYCAST_SIDE_ANGLE_DEG)
+	# Each ray hits → contribute to avoid_steer with a sign opposite to the hit's lateral.
+	# Side rays are weaker than forward.
 	var avoid_steer: float = 0.0
 	var avoid_active: bool = false
+	var avoid_close: bool = false
 	var space_state: PhysicsDirectSpaceState3D = get_world_3d().direct_space_state
 	var ray_origin: Vector3 = pos + Vector3(0, 0.3, 0)
-	var ray_end: Vector3 = ray_origin + fwd * RAYCAST_LENGTH
-	var query: PhysicsRayQueryParameters3D = PhysicsRayQueryParameters3D.create(ray_origin, ray_end)
-	query.exclude = [self.get_rid()]
-	var hit: Dictionary = space_state.intersect_ray(query)
-	if not hit.is_empty():
+	var side_angle: float = deg_to_rad(RAYCAST_SIDE_ANGLE_DEG)
+	var sin_a: float = sin(side_angle)
+	var cos_a: float = cos(side_angle)
+	# Build the 3 ray dirs in XZ-plane around fwd
+	var fwd_xz: Vector3 = Vector3(fwd.x, 0, fwd.z).normalized()
+	var ray_dirs_lengths: Array = [
+		[fwd_xz, RAYCAST_LENGTH, 1.0],                                                # forward
+		[Vector3(fwd_xz.x * cos_a - fwd_xz.z * sin_a, 0, fwd_xz.x * sin_a + fwd_xz.z * cos_a), RAYCAST_SIDE_LENGTH, 0.55],  # +35° (left turn)
+		[Vector3(fwd_xz.x * cos_a + fwd_xz.z * sin_a, 0, -fwd_xz.x * sin_a + fwd_xz.z * cos_a), RAYCAST_SIDE_LENGTH, 0.55], # -35° (right turn)
+	]
+	var nearest_hit_dist: float = INF
+	for entry in ray_dirs_lengths:
+		var dir: Vector3 = entry[0]
+		var length: float = entry[1]
+		var weight: float = entry[2]
+		var ray_end: Vector3 = ray_origin + dir * length
+		var query: PhysicsRayQueryParameters3D = PhysicsRayQueryParameters3D.create(ray_origin, ray_end)
+		query.exclude = [self.get_rid()]
+		var hit: Dictionary = space_state.intersect_ray(query)
+		if hit.is_empty():
+			continue
 		var hit_body: Object = hit.get("collider")
-		if hit_body and not (hit_body is RigidBody3D):
-			var to_hit: Vector3 = hit.position - pos
-			to_hit.y = 0.0
-			var hit_cross: float = fwd.z * to_hit.x - fwd.x * to_hit.z
-			# Steer away from the obstacle
-			avoid_steer = -sign(hit_cross) * 0.9
-			if abs(hit_cross) < 0.5:
-				avoid_steer = 0.9
-			avoid_active = true
+		if hit_body == null or hit_body is RigidBody3D:
+			continue  # ignore other cars
+		var hit_pos: Vector3 = hit.position
+		var to_hit: Vector3 = hit_pos - pos
+		to_hit.y = 0.0
+		var hit_cross: float = fwd.z * to_hit.x - fwd.x * to_hit.z
+		# Steer in the OPPOSITE lateral direction
+		var steer_delta: float = 0.0
+		if abs(hit_cross) < 0.3:
+			# Pile devant — break tie based on which side the target arch is on
+			steer_delta = -sign(centerline_steer + 0.001) * 0.95
+		else:
+			steer_delta = -sign(hit_cross) * 0.95
+		avoid_steer += steer_delta * weight
+		avoid_active = true
+		var d: float = to_hit.length()
+		if d < nearest_hit_dist:
+			nearest_hit_dist = d
+		if d < 5.0:
+			avoid_close = true
+	avoid_steer = clamp(avoid_steer, -1.0, 1.0)
 
 	# 6. Driving imperfection — sinusoidal wobble
 	if driving_imperfection > 0.001:
@@ -330,7 +364,10 @@ func _physics_process(delta: float) -> void:
 	steer_input = clamp(steer_input, -1.0, 1.0)
 
 	# 8. Auto-acceleration with steer drag (no off-track penalty in arch-based)
+	#    Cap top speed when obstacle is very close so the bot has time to actually turn.
 	var top: float = _effective_top_speed() * (1.0 - abs(steer_input) * STEER_TOP_LOSS)
+	if avoid_close:
+		top *= AVOID_BRAKE_FRACTION
 	if fwd_speed < top:
 		apply_central_force(fwd * ACCEL * mass)
 

@@ -91,5 +91,4 @@ p4_right={
 [rendering]
 
 renderer/rendering_method.mobile="gl_compatibility"
-renderer/rendering_method.web="gl_compatibility"
 environment/defaults/default_clear_color=Color(0.15, 0.18, 0.22, 1)
