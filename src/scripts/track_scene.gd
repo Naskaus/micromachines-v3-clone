@@ -11,6 +11,9 @@ extends Node3D
 #   Ramps/                        (StaticBody3D children — visual + collider)
 #   Decor/                        (any MeshInstance3D children — non-collidable)
 #   Floor                         (StaticBody3D — track surface)
+#   NavigationRegion3D            (optional — bot pathfinding around walls/decor)
+
+signal nav_baked
 
 @export var track_id: String = "pool_felt"
 @export var track_name: String = "Pool Felt"
@@ -21,11 +24,34 @@ extends Node3D
 
 var arches: Array[Node3D] = []
 var spawn_slots: Array[Transform3D] = []
+var nav_region: NavigationRegion3D = null
+var nav_ready: bool = false
 
 
 func _ready() -> void:
 	_collect_arches()
 	_compute_spawn_slots()
+	nav_region = get_node_or_null("NavigationRegion3D") as NavigationRegion3D
+	if nav_region != null:
+		# Bake on next idle frame so the Decor node (which may spawn procedural
+		# items in its own _ready) has had time to populate.
+		call_deferred("_bake_nav")
+	else:
+		nav_ready = true  # no nav — bots fall back to direct steering
+		nav_baked.emit()
+
+
+func _bake_nav() -> void:
+	if nav_region == null:
+		nav_ready = true
+		nav_baked.emit()
+		return
+	# Async bake on background thread; await completion via the standard signal.
+	nav_region.bake_navigation_mesh(true)
+	await nav_region.bake_finished
+	nav_ready = true
+	print("[TrackScene %s] Navigation mesh baked" % track_id)
+	nav_baked.emit()
 
 
 func _collect_arches() -> void:

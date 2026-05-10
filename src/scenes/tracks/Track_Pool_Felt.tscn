@@ -1,4 +1,4 @@
-[gd_scene load_steps=39 format=3]
+[gd_scene load_steps=40 format=3]
 
 [ext_resource type="Script" path="res://scripts/track_scene.gd" id="0_scene"]
 [ext_resource type="Script" path="res://scripts/boost_pad.gd" id="2_boost"]
@@ -121,12 +121,24 @@ emission = Color(1.0, 0.7, 0.0, 1)
 emission_energy_multiplier = 0.6
 roughness = 0.3
 
+[sub_resource type="NavigationMesh" id="NavMesh_pool"]
+geometry_collision_mask = 1
+geometry_parsed_geometry_type = 1
+geometry_source_geometry_mode = 1
+geometry_source_group_name = &"nav_source"
+agent_radius = 1.4
+agent_height = 0.5
+agent_max_climb = 0.5
+agent_max_slope = 30.0
+cell_size = 0.5
+cell_height = 0.25
+
 [node name="Track_Pool_Felt" type="Node3D"]
 script = ExtResource("0_scene")
 track_id = "pool_felt"
 track_name = "Pool Felt"
 
-[node name="Floor" type="StaticBody3D" parent="."]
+[node name="Floor" type="StaticBody3D" parent="." groups=["nav_source"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Floor"]
@@ -136,7 +148,7 @@ shape = SubResource("Shape_floor")
 mesh = SubResource("Mesh_floor")
 surface_material_override/0 = SubResource("Mat_floor")
 
-[node name="WallLeft" type="StaticBody3D" parent="."]
+[node name="WallLeft" type="StaticBody3D" parent="." groups=["nav_source"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -140, 1, 0)
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="WallLeft"]
@@ -146,7 +158,7 @@ shape = SubResource("Shape_wall_lr")
 mesh = SubResource("Mesh_wall_lr")
 surface_material_override/0 = SubResource("Mat_wall")
 
-[node name="WallRight" type="StaticBody3D" parent="."]
+[node name="WallRight" type="StaticBody3D" parent="." groups=["nav_source"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 140, 1, 0)
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="WallRight"]
@@ -156,7 +168,7 @@ shape = SubResource("Shape_wall_lr")
 mesh = SubResource("Mesh_wall_lr")
 surface_material_override/0 = SubResource("Mat_wall")
 
-[node name="WallFront" type="StaticBody3D" parent="."]
+[node name="WallFront" type="StaticBody3D" parent="." groups=["nav_source"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, -140)
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="WallFront"]
@@ -166,7 +178,7 @@ shape = SubResource("Shape_wall_fb")
 mesh = SubResource("Mesh_wall_fb")
 surface_material_override/0 = SubResource("Mat_wall")
 
-[node name="WallBack" type="StaticBody3D" parent="."]
+[node name="WallBack" type="StaticBody3D" parent="." groups=["nav_source"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 140)
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="WallBack"]
@@ -332,7 +344,7 @@ surface_material_override/0 = SubResource("Mat_arch_purple")
 
 [node name="Ramps" type="Node3D" parent="."]
 
-[node name="JumpRamp" type="StaticBody3D" parent="Ramps"]
+[node name="JumpRamp" type="StaticBody3D" parent="Ramps" groups=["nav_source"]]
 transform = Transform3D(-0.16036, -0.36976, -0.91519, 0.00000, 0.92718, -0.37461, 0.98706, -0.06007, -0.14868, -30.90170, 1.37303, -2.44717)
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Ramps/JumpRamp"]
@@ -401,5 +413,8 @@ shape = SubResource("Shape_boost_zaxis")
 mesh = SubResource("Mesh_boost_zaxis")
 surface_material_override/0 = SubResource("Mat_boost")
 
-[node name="Decor" type="Node3D" parent="."]
+[node name="Decor" type="Node3D" parent="." groups=["nav_source"]]
 script = ExtResource("3_decor")
+
+[node name="NavigationRegion3D" type="NavigationRegion3D" parent="."]
+navigation_mesh = SubResource("NavMesh_pool")

@@ -55,6 +55,18 @@ var _boost_trail: CPUParticles3D
 var _noise_phase: float = 0.0
 @export var driving_imperfection: float = 0.25
 
+# Navigation (Tier 2 — A* around walls / decor)
+var _nav_agent: NavigationAgent3D = null
+var _last_nav_target: Vector3 = Vector3.ZERO
+
+# Stuck detection (Tier 1 fallback when nav fails)
+const STUCK_SPEED_THRESHOLD := 1.5    # m/s — below = potentially stuck
+const STUCK_TIME := 1.5                # s — must be slow this long
+const STUCK_RECOVERY_TIME := 1.2       # s — wiggle/reverse for this long
+var _stuck_timer: float = 0.0
+var _recovery_timer: float = 0.0
+var _recovery_dir: int = 1             # 1 or -1 — alternates the wiggle
+
 
 func apply_boost(duration: float, factor: float) -> void:
 	_boost_until = Time.get_ticks_msec() / 1000.0 + duration
@@ -95,6 +107,14 @@ func _ready() -> void:
 	add_child(_smoke_left)
 	add_child(_smoke_right)
 	add_child(_boost_trail)
+
+	# NavigationAgent3D for A* pathfinding around obstacles
+	_nav_agent = NavigationAgent3D.new()
+	_nav_agent.path_desired_distance = 2.0
+	_nav_agent.target_desired_distance = 3.0
+	_nav_agent.path_max_distance = 20.0
+	_nav_agent.avoidance_enabled = false  # we handle car-vs-car via raycast
+	add_child(_nav_agent)
 
 
 func _build_car_visual_from_glb() -> bool:
@@ -258,12 +278,26 @@ func _physics_process(delta: float) -> void:
 
 	var pos: Vector3 = global_position
 
-	# 1. Target = next arch position pushed by race_manager. Until set, fall through.
-	var target_pos: Vector3 = pos
-	var has_target: bool = false
+	# 1. Final goal = next arch position (pushed by race_manager).
+	#    Steering target = next path waypoint from NavigationAgent3D, falling
+	#    back to the arch directly if no path is available.
+	var goal_pos: Vector3 = pos
+	var has_goal: bool = false
 	if has_meta("race_next_arch_pos"):
-		target_pos = get_meta("race_next_arch_pos") as Vector3
-		has_target = true
+		goal_pos = get_meta("race_next_arch_pos") as Vector3
+		has_goal = true
+
+	var target_pos: Vector3 = goal_pos
+	var has_target: bool = has_goal
+	if has_goal and _nav_agent != null:
+		# Update agent target only when the arch changes (avoid recompute every frame)
+		if _last_nav_target.distance_squared_to(goal_pos) > 0.25:
+			_nav_agent.target_position = goal_pos
+			_last_nav_target = goal_pos
+		var nav_next: Vector3 = _nav_agent.get_next_path_position()
+		# If the agent has a path, use the next waypoint; otherwise the arch itself.
+		if not _nav_agent.is_navigation_finished() and pos.distance_squared_to(nav_next) > 0.04:
+			target_pos = nav_next
 
 	# 2. Steering inputs
 	var fwd: Vector3 = -transform.basis.z
@@ -271,6 +305,26 @@ func _physics_process(delta: float) -> void:
 	var vel: Vector3 = linear_velocity
 	var fwd_speed: float = vel.dot(fwd)
 	var lateral_speed: float = vel.dot(right)
+
+	# 2b. Stuck detection — track low-speed time, trigger recovery if persistent
+	if _recovery_timer > 0.0:
+		_recovery_timer -= delta
+		# Force a hard alternating steer + reverse during recovery
+		var rec_steer: float = float(_recovery_dir) * 1.0
+		var rev_force: Vector3 = -fwd * ACCEL * mass * 0.6
+		apply_central_force(rev_force)
+		angular_velocity.y = rec_steer * TURN_RATE_LOW_SPEED * 1.4
+		# Skip the rest of normal driving
+		_update_particles(fwd, false)
+		return
+	if abs(fwd_speed) < STUCK_SPEED_THRESHOLD and has_goal:
+		_stuck_timer += delta
+		if _stuck_timer >= STUCK_TIME:
+			_recovery_timer = STUCK_RECOVERY_TIME
+			_recovery_dir = -_recovery_dir  # alternate L/R each trigger
+			_stuck_timer = 0.0
+	else:
+		_stuck_timer = 0.0
 
 	# 3. Rubber-banding vs P1 by arches_passed delta
 	if _player:
@@ -385,12 +439,16 @@ func _physics_process(delta: float) -> void:
 	apply_central_impulse(lateral_correction * mass)
 
 	# 11. Particle FX
+	_update_particles(fwd, is_hard_turning)
+
+
+func _update_particles(fwd: Vector3, drifting: bool) -> void:
 	var back_dir: Vector3 = -fwd
 	if _smoke_left:
-		_smoke_left.emitting = is_hard_turning
+		_smoke_left.emitting = drifting
 		_smoke_left.direction = back_dir + Vector3(0, 0.5, 0)
 	if _smoke_right:
-		_smoke_right.emitting = is_hard_turning
+		_smoke_right.emitting = drifting
 		_smoke_right.direction = back_dir + Vector3(0, 0.5, 0)
 	if _boost_trail:
 		var boost_active: bool = (Time.get_ticks_msec() / 1000.0) < _boost_until
