@@ -4,7 +4,7 @@ extends Node
 # track at startup, and by the track picker button to cycle.
 
 const TRACKS: Array[Dictionary] = [
-	{"id": "pool_felt", "name": "Pool Felt", "scene": "res://scenes/tracks/Track_Pool_Felt.tscn"},
+	{"id": "pool_felt", "name": "Billard", "scene": "res://scenes/tracks/Track_Pool_Felt.tscn"},
 	{"id": "workshop",  "name": "Workshop",  "scene": "res://scenes/tracks/Track_Workshop.tscn"},
 ]
 

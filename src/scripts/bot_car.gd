@@ -56,6 +56,11 @@ var _noise_phase: float = 0.0
 @export var driving_imperfection: float = 0.25
 
 # Navigation (Tier 2 — A* around walls / decor)
+# Within DIRECT_APPROACH_DIST of the arch, the bot ignores pathfinding and
+# steers straight at the arch — prevents the "drift between obstacles without
+# caring about the race" symptom where dense decor near arches causes the
+# nav agent to weave laterally instead of finishing the approach.
+const DIRECT_APPROACH_DIST := 15.0
 var _nav_agent: NavigationAgent3D = null
 var _last_nav_target: Vector3 = Vector3.ZERO
 
@@ -110,10 +115,10 @@ func _ready() -> void:
 
 	# NavigationAgent3D for A* pathfinding around obstacles
 	_nav_agent = NavigationAgent3D.new()
-	_nav_agent.path_desired_distance = 2.0
-	_nav_agent.target_desired_distance = 3.0
-	_nav_agent.path_max_distance = 20.0
-	_nav_agent.avoidance_enabled = false  # we handle car-vs-car via raycast
+	_nav_agent.path_desired_distance = 4.0   # wider waypoint tolerance — less zigzag
+	_nav_agent.target_desired_distance = 5.0
+	_nav_agent.path_max_distance = 30.0
+	_nav_agent.avoidance_enabled = false
 	add_child(_nav_agent)
 
 
@@ -294,10 +299,21 @@ func _physics_process(delta: float) -> void:
 		if _last_nav_target.distance_squared_to(goal_pos) > 0.25:
 			_nav_agent.target_position = goal_pos
 			_last_nav_target = goal_pos
-		var nav_next: Vector3 = _nav_agent.get_next_path_position()
-		# If the agent has a path, use the next waypoint; otherwise the arch itself.
-		if not _nav_agent.is_navigation_finished() and pos.distance_squared_to(nav_next) > 0.04:
-			target_pos = nav_next
+		var dist_to_goal: float = pos.distance_to(goal_pos)
+		# Final-approach override: within DIRECT_APPROACH_DIST, ignore pathfinding
+		# and aim straight at the arch — they're already lined up and don't need
+		# the agent's lateral waypoints near a wide gate.
+		if dist_to_goal > DIRECT_APPROACH_DIST:
+			var nav_next: Vector3 = _nav_agent.get_next_path_position()
+			if not _nav_agent.is_navigation_finished() and pos.distance_squared_to(nav_next) > 0.04:
+				# Reject waypoints that point BACKWARD relative to the goal — those
+				# happen when the path wraps tightly. Forces forward progress.
+				var to_wp: Vector3 = nav_next - pos
+				var to_goal: Vector3 = goal_pos - pos
+				to_wp.y = 0
+				to_goal.y = 0
+				if to_wp.dot(to_goal) > 0.0:
+					target_pos = nav_next
 
 	# 2. Steering inputs
 	var fwd: Vector3 = -transform.basis.z
