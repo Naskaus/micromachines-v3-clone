@@ -146,3 +146,24 @@ Transform3D(
 
 **How to apply:** When generating Transform3D programmatically (e.g. from Python helper outputting GDScript), always emit the 4-Vector3 form. The 12-float form is only for `.tscn` files.
 
+
+## 2026-05-10 — Pivot ENGINE arch-based + Tier 2 nav
+
+### Lesson 1 — Don't bake walls/decor blind, they create unwalkable navmesh patches
+- **What:** First V0.20.2 nav-mesh bake had agent_radius=1.4 + dense decor (270 toy items via decor.gd). Bots got drifty paths zigzagging through narrow gaps.
+- **Root cause:** agent_radius too generous → most paths couldn't squeeze between decor items, agent picked far-around routes.
+- **Rule:** When baking NavMesh in a scene with dense procedural decor, start with agent_radius slightly larger than car width (1.2m for 0.95m cars), test, only raise if cars clip walls.
+- **How to apply:** Bake → playtest a few seconds → check waypoint paths visually. If bots take huge detours near arches, lower agent_radius.
+
+### Lesson 2 — Pathfinding doesn't replace direct steering for the final approach
+- **What:** V0.20.2 had bots using NavigationAgent3D 100% of the time. Even within 5m of the next arch, bots followed lateral waypoints from the agent, "drifting between obstacles without caring about the race" (Seb's words).
+- **Root cause:** NavMesh paths can include lateral waypoints to avoid obstacles. When the goal is a wide gate (arches are 12m wide), bypassing pathfinding for the final approach gives cleaner racing lines.
+- **Rule:** For race-style games where goals are wide gates, use pathfinding only for medium/long-range routing. Within a goal-radius of the target, switch to direct steering.
+- **How to apply:** Define `DIRECT_APPROACH_DIST` per goal type. For arches in MV3, 15m works. The general principle: agent gives macro routing, direct gives micro precision.
+
+### Lesson 3 — Godot _ready runs children-first, defer track-dependent setup
+- **What:** Wired RaceManager.track_scene_path = NodePath("../Track") but at RaceManager._ready time, the dynamically-instanced Track child didn't exist yet (Main._ready runs LAST since parents go after children).
+- **Root cause:** Godot's _ready ordering is depth-first bottom-up. Sibling scripts in the same parent scene can't see dynamically-instanced siblings because the parent's _ready runs after theirs.
+- **Rule:** When a parent must instance children dynamically, sibling consumers should defer their track-dependent setup via `call_deferred("_after_xxx_loaded")` from their `_ready`. By the time the deferred queue fires, all _ready calls have completed.
+- **How to apply:** See `race_manager._after_track_loaded` pattern. Avoid trying to use `_enter_tree` for this — also bottom-up and fragile.
+

@@ -27,8 +27,8 @@ micromachines-v3-clone/
 
 - **What:** Micro Machines V3 (PS1 1997) clone — top-down arcade racing, auto-accel, 2-button steering, 4 players on 2 controllers.
 - **Stack:** Godot 4.6 + GDScript.
-- **Status:** WIP — V0 prototype phase.
-- **Repo:** local only.
+- **Status:** **V0.20.3-rc1** — arch-based freestyle engine + NavigationAgent3D Tier 2 nav. 2 tracks (Billard + Workshop), track picker live, multi en sleep mode. Awaiting Seb playtest validation.
+- **Repo:** GitHub `Naskaus/micromachines-v3-clone` PUBLIC. Live at `mv3.naskaus.com` (Phase 3 multi v0.19.2-rc1 deployed; V0.20.x rebuild not yet redeployed — still local).
 
 ## Setup — DONE (2026-05-02)
 
